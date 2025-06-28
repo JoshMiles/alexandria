@@ -1,0 +1,266 @@
+.book-card {
+  background-color: var(--background-light);
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.book-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.book-cover, .close-button, .download-button, .mirror-button {
+  cursor: pointer;
+}
+
+.book-card.expanded {
+  flex-direction: row;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.expanded-book-cover {
+  flex: 0 0 300px;
+  max-height: 450px;
+  margin-right: 2rem;
+}
+
+.expanded-book-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.expanded-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.expanded-header h3 {
+  font-size: 1.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.expanded-header p {
+  font-size: 1rem;
+  color: var(--foreground-dark);
+}
+
+.mirror-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.mirror-button {
+  background-color: var(--background-lighter);
+  color: var(--foreground-dark);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background-color 0.2s;
+}
+
+.mirror-button:hover {
+  background-color: var(--border);
+}
+
+.book-cover img {
+  width: 120px;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.book-info h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.book-info p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--foreground-dark);
+  font-style: italic;
+}
+
+.expanded-header p {
+  font-size: 1rem;
+  color: var(--foreground-dark);
+  font-style: italic;
+}
+
+.chip-container {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  justify-content: center;
+}
+
+.chip {
+  background-color: var(--background-lighter);
+  color: var(--foreground-dark);
+  padding: 0.3rem 0.7rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.chip:hover {
+  transform: scale(1.05);
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+}
+
+.book-card.expanded .book-info {
+  display: none;
+}
+
+.book-card.expanded .expanded-details-wrapper {
+  width: 100%;
+}
+
+.book-card.expanded .expanded-details {
+  flex: 1;
+  padding-left: 0;
+  max-height: none;
+  overflow: hidden;
+}
+
+.description {
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  color: var(--foreground-dark);
+  max-height: 150px;
+  overflow-y: auto;
+  padding-right: 1rem;
+}
+
+
+.metadata-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.detail-item {
+  background-color: var(--background-lighter);
+  padding: 1rem;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-item strong {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--foreground-dark);
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detail-item span {
+  font-size: 1rem;
+  font-weight: 500;
+}
+.mirror-links {
+  margin-top: 1rem;
+}
+
+.mirror-links h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.mirror-links ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.mirror-links li a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.download-button {
+  background-color: var(--download-button-color);
+  color: var(--foreground);
+  border: none;
+  border-radius: 8px;
+  padding: 0.8rem 1.5rem;
+  cursor: pointer;
+  margin-top: 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  width: 100%;
+  transition: background-color 0.2s;
+}
+
+.download-button:hover {
+  background-color: var(--download-button-hover-color);
+}
+
+.download-button:disabled {
+  background-color: #555;
+  cursor: not-allowed;
+}
+
+.book-card-download-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  width: 100%;
+}
+
+.expanded-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  position: relative; /* Added for positioning chips */
+}
+
+.top-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.top-right-chips {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.expanded-header .chip-container {
+  display: none; /* Hide the old chip container in expanded view */
+}
+
+.close-button {
+  background: none;
+  border: none;
+  color: var(--foreground-dark);
+  cursor: pointer;
+  font-size: 1.5rem;
+}

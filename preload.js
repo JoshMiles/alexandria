@@ -1,0 +1,21 @@
+import { contextBridge, ipcRenderer } from 'electron';
+
+contextBridge.exposeInMainWorld('electron', {
+  search: (query) => ipcRenderer.invoke('search', query),
+  download: (options) => ipcRenderer.invoke('download', options),
+  getDownloadLinks: (link) => ipcRenderer.invoke('get-download-links', link),
+  resolve: (link) => ipcRenderer.invoke('resolve', link),
+  openLink: (link) => ipcRenderer.invoke('open-link', link),
+  getDownloads: () => ipcRenderer.invoke('get-downloads'),
+  clearDownloads: () => ipcRenderer.invoke('clear-downloads'),
+  cancelDownload: (clientId) => ipcRenderer.invoke('cancel-download', clientId),
+  openFile: (filename) => ipcRenderer.invoke('open-file', filename),
+  openFolder: (filename) => ipcRenderer.invoke('open-folder', filename),
+  on: (channel, callback) => {
+    ipcRenderer.on(channel, (event, ...args) => callback(...args));
+  },
+  onDownloadsUpdated: (callback) => ipcRenderer.on('downloads-updated', (event, ...args) => callback(...args)),
+  onDownloadProgress: (callback) => ipcRenderer.on('download-progress', (event, ...args) => callback(...args)),
+  getDownloadLocation: () => ipcRenderer.invoke('get-download-location'),
+  getVersion: () => ipcRenderer.invoke('get-version'),
+});

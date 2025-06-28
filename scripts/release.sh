@@ -5,6 +5,9 @@ set -e
 # Get the new version from the first argument, or default to 'patch'
 VERSION_BUMP=${1:-patch}
 
+echo "Staging all changes..."
+git add .
+
 echo "Bumping version with '$VERSION_BUMP'..."
 
 # Update the version, create a commit, and tag it

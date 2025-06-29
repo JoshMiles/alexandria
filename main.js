@@ -11,11 +11,31 @@ const { search, getDownloadLinks, resolveDirectDownloadLink, getSciHubDownloadLi
 let store;
 let downloadItems = {};
 let mainWindow;
+let startupWindow;
 
 log.transports.file.level = 'info';
 log.info('App starting...');
 
 autoUpdater.logger = log;
+
+function createStartupWindow() {
+  log.info('Creating startup window.');
+  startupWindow = new BrowserWindow({
+    width: 400,
+    height: 200,
+    frame: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'dist/preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  startupWindow.loadFile('dist/startup.html');
+  startupWindow.on('closed', () => {
+    log.info('Startup window closed.');
+    startupWindow = null;
+  });
+}
 
 function createWindow() {
   log.info('Creating main window.');
@@ -40,11 +60,6 @@ function createWindow() {
     log.info('Main window closed.');
     mainWindow = null;
   });
-
-  mainWindow.once('ready-to-show', () => {
-    log.info('Main window is ready to show.');
-    autoUpdater.checkForUpdatesAndNotify();
-  });
 }
 
 app.whenReady().then(async () => {
@@ -59,7 +74,55 @@ app.whenReady().then(async () => {
 
   Store.initRenderer();
 
-  createWindow();
+  createStartupWindow();
+
+  autoUpdater.on('checking-for-update', () => {
+    startupWindow.webContents.send('update-message', 'Checking for updates...');
+  });
+
+  autoUpdater.on('update-available', (info) => {
+    startupWindow.webContents.send('update-message', `Update available: ${info.version}`);
+  });
+
+  autoUpdater.on('update-not-available', () => {
+    startupWindow.webContents.send('update-message', 'No updates available.');
+    setTimeout(() => {
+      if (startupWindow) {
+        startupWindow.close();
+      }
+      createWindow();
+    }, 2000);
+  });
+
+  autoUpdater.on('error', (err) => {
+    startupWindow.webContents.send('update-message', `Error in auto-updater: ${err.toString()}`);
+    setTimeout(() => {
+      if (startupWindow) {
+        startupWindow.close();
+      }
+      createWindow();
+    }, 2000);
+  });
+
+  autoUpdater.on('download-progress', (progressObj) => {
+    startupWindow.webContents.send('update-message', `Downloading update: ${Math.round(progressObj.percent)}%`);
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    startupWindow.webContents.send('update-message', `Update downloaded: ${info.version}. Restarting...`);
+    autoUpdater.quitAndInstall();
+  });
+
+  if (app.isPackaged) {
+    autoUpdater.checkForUpdates();
+  } else {
+    setTimeout(() => {
+      if (startupWindow) {
+        startupWindow.close();
+      }
+      createWindow();
+    }, 2000);
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

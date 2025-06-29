@@ -39,7 +39,7 @@ declare global {
       getVersion: () => Promise<string>;
       search: (query: string) => Promise<Book[]>;
       openLink: (link: string) => void;
-      on: (channel: string, callback: (...args: any[]) => void) => void;
+      on: (channel: 'update-message', callback: (message: string) => void) => void;
       minimize: () => void;
       maximize: () => void;
       close: () => void;

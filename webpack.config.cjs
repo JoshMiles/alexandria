@@ -4,10 +4,13 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 module.exports = [
   {
     mode: 'production',
-    entry: './src/index.tsx',
+    entry: {
+      main: './src/index.tsx',
+      startup: './src/startup.tsx',
+    },
     output: {
       path: path.resolve(__dirname, 'dist'),
-      filename: 'main.js',
+      filename: '[name].js',
     },
     resolve: {
       extensions: ['.ts', '.tsx', '.js'],
@@ -37,6 +40,13 @@ module.exports = [
     plugins: [
       new HtmlWebpackPlugin({
         template: './src/index.html',
+        filename: 'index.html',
+        chunks: ['main'],
+      }),
+      new HtmlWebpackPlugin({
+        template: './src/startup.html',
+        filename: 'startup.html',
+        chunks: ['startup'],
       }),
     ],
     performance: {

@@ -16,10 +16,14 @@ contextBridge.exposeInMainWorld('electron', {
   openFile: (filename) => ipcRenderer.invoke('open-file', filename),
   openFolder: (filename) => ipcRenderer.invoke('open-folder', filename),
   on: (channel, callback) => {
-    ipcRenderer.on(channel, (event, ...args) => callback(...args));
+    const validChannels = ['update-message'];
+    if (validChannels.includes(channel)) {
+      ipcRenderer.on(channel, (event, ...args) => callback(...args));
+    }
   },
   onDownloadsUpdated: (callback) => ipcRenderer.on('downloads-updated', (event, ...args) => callback(...args)),
   onDownloadProgress: (callback) => ipcRenderer.on('download-progress', (event, ...args) => callback(...args)),
   getDownloadLocation: () => ipcRenderer.invoke('get-download-location'),
   getVersion: () => ipcRenderer.invoke('get-version'),
 });
+

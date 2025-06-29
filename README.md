@@ -15,12 +15,10 @@ Download the latest release for your platform:
 
 | Platform | Download Link |
 |----------|---------------|
-| Platform | Download Link |
-|----------|---------------|
 | **Windows** | [Alexandria-Setup-0.1.6.exe](https://github.com/JoshMiles/alexandria/releases/download/v0.1.6/Alexandria-Setup-0.1.6.exe) |
 | **macOS**   | [Alexandria-0.1.6-arm64.dmg](https://github.com/JoshMiles/alexandria/releases/download/v0.1.6/Alexandria-0.1.6-arm64.dmg) |
 | **Linux**   | [Alexandria-0.1.6.AppImage](https://github.com/JoshMiles/alexandria/releases/download/v0.1.6/Alexandria-0.1.6.AppImage) |
-> _Note: If the asset names differ, adjust the links above to match the actual release files._
+
 
 ---
 
@@ -36,7 +34,8 @@ Download the latest release for your platform:
 
 Clone the repository:
 
-```git clone https://github.com/JoshMiles/alexandria.git cd alexandria```
+```git clone https://github.com/JoshMiles/alexandria.git ```
+```cd alexandria```
 
 Run the project:
 

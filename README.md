@@ -25,6 +25,7 @@ Download the latest release for your platform:
 ## ✨ Features
 
 - **Modern UI** for searching and browsing LibGen
+- **DOI support** for finding sci-hub related articles
 - **Built-in Download Manager** for easy, reliable downloads
 - **Proxy Support** to help you access LibGen even if it’s blocked in your region
 

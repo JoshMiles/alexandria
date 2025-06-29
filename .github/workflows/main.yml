@@ -17,16 +17,16 @@ jobs:
         with:
           python-version: 3.x
 
-      - name: Extract version from release tag
+      - name: Get latest release version
         id: get_version
         run: |
-          # Remove leading 'v' if present
-          VERSION="${GITHUB_REF##*/}"
+          VERSION=$(curl -s https://api.github.com/repos/JoshMiles/alexandria/releases/latest | jq -r .tag_name)
           VERSION="${VERSION#v}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Update README.md download links
         run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
           python <<EOF
           import re
       

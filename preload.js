@@ -1,6 +1,10 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electron', {
+  platform: process.platform,
+  minimize: () => ipcRenderer.send('minimize'),
+  maximize: () => ipcRenderer.send('maximize'),
+  close: () => ipcRenderer.send('close'),
   search: (query) => ipcRenderer.invoke('search', query),
   download: (options) => ipcRenderer.invoke('download', options),
   getDownloadLinks: (link) => ipcRenderer.invoke('get-download-links', link),

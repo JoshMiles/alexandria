@@ -7,10 +7,11 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ onLogoClick }) => {
+  const isMac = window.electron.platform === 'darwin';
+
   return (
-    <div className="header" onClick={onLogoClick}>
+    <div className={`header ${isMac ? 'mac-header' : ''}`} onClick={onLogoClick}>
       <div className="logo-container">
-        <FiBookOpen className="logo-icon" />
         <h1 className="logo-text">Alexandria</h1>
       </div>
     </div>

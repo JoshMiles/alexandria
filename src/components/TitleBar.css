@@ -1,0 +1,44 @@
+.title-bar {
+  display: flex;
+  height: 40px;
+  -webkit-app-region: drag;
+  background-color: var(--background-light);
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  z-index: 100;
+}
+
+.macos-title-bar {
+  -webkit-app-region: drag;
+  height: 40px; /* Adjust as needed */
+}
+
+.title-bar-drag-region {
+  flex-grow: 1;
+}
+
+.title-bar-controls {
+  -webkit-app-region: no-drag;
+  display: flex;
+}
+
+.title-bar-button {
+  background: none;
+  border: none;
+  color: var(--foreground);
+  font-size: 1.2rem;
+  padding: 0 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.title-bar-button:hover {
+  background-color: var(--background-lighter);
+}
+
+.close-button:hover {
+  background-color: var(--error);
+  color: white;
+}

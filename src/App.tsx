@@ -8,6 +8,8 @@ import ResultsGrid from './components/ResultsGrid';
 import Notification from './components/Notification';
 import Settings from './components/Settings';
 import Header from './components/Header';
+import TitleBar from './components/TitleBar';
+import DoiResult from './components/DoiResult';
 import './styles.css';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -17,6 +19,9 @@ declare global {
       search: (query: string) => Promise<Book[]>;
       openLink: (link: string) => void;
       on: (channel: string, callback: (...args: any[]) => void) => void;
+      minimize: () => void;
+      maximize: () => void;
+      close: () => void;
     };
   }
 }
@@ -24,7 +29,12 @@ declare global {
 const App = () => (
   <DownloadProvider>
     <ThemeProvider>
-      <AppContent />
+      <div className="app-container">
+        {window.electron.platform !== 'darwin' && <TitleBar />}
+        <div className="content-wrapper">
+          <AppContent />
+        </div>
+      </div>
     </ThemeProvider>
   </DownloadProvider>
 );
@@ -34,6 +44,8 @@ const AppContent = () => {
   const [query, setQuery] = useState('');
   const [unfilteredResults, setUnfilteredResults] = useState<Book[]>([]);
   const [results, setResults] = useState<Book[]>([]);
+  const [doiResult, setDoiResult] = useState<Book | null>(null);
+  const [isDoiSearch, setIsDoiSearch] = useState(false);
   const [loading, setLoading] = useState(false);
   const [statusText, setStatusText] = useState('Ready');
   const [error, setError] = useState('');
@@ -57,6 +69,8 @@ const AppContent = () => {
 
   const handleBack = () => {
     setResults([]);
+    setDoiResult(null);
+    setIsDoiSearch(false);
     setQuery('');
   };
 
@@ -85,18 +99,29 @@ const AppContent = () => {
     setStatusText('Searching...');
     setUnfilteredResults([]);
     setResults([]);
+    setDoiResult(null);
+    setIsDoiSearch(false);
     setError('');
     setNoResults(false);
 
+    const doiRegex = /10\.\d{4,9}\/[-._;()/:A-Z0-9]+$/i;
+    const isDoi = doiRegex.test(query);
+    setIsDoiSearch(isDoi);
+
     try {
       const searchResults = await window.electron.search(query);
-      const resultsWithIds = searchResults.map((book) => ({ ...book, client_id: uuidv4() }));
-      setUnfilteredResults(resultsWithIds);
-      if (resultsWithIds.length === 0) {
-        setNoResults(true);
-        setStatusText('No results found');
+      if (isDoi && searchResults.length > 0) {
+        setDoiResult(searchResults[0]);
+        setStatusText('DOI search complete');
       } else {
-        setStatusText('Search complete');
+        const resultsWithIds = searchResults.map((book) => ({ ...book, client_id: uuidv4() }));
+        setUnfilteredResults(resultsWithIds);
+        if (resultsWithIds.length === 0) {
+          setNoResults(true);
+          setStatusText('No results found');
+        } else {
+          setStatusText('Search complete');
+        }
       }
     } catch (err) {
       console.error('Search error:', err);
@@ -109,7 +134,7 @@ const AppContent = () => {
   };
 
   return (
-    <div className="app-container">
+    <>
       <div className="left-panel">
         <Header onLogoClick={handleLogoClick} />
         <Sidebar
@@ -149,31 +174,36 @@ const AppContent = () => {
               )}
               {error && <p className="error-message">{error}</p>}
               {noResults && <p className="no-results-message">No results found for "{query}"</p>}
-              {!loading && !error && !noResults && results.length === 0 && (
+              {!loading && !error && !noResults && results.length === 0 && !doiResult && (
                 <div className="welcome-message">
                   <p><i>"{randomFact}"</i></p>
                   <p><i>- {randomFactAuthor}</i></p>
                 </div>
               )}
-              {results.length > 0 && (
+              {(results.length > 0 || doiResult) && (
                 <div className="search-results-header">
                   <button className="back-button" onClick={handleBack}>
                     Back
                   </button>
                   <h2>Search Results</h2>
-                  <div className="toggle-container">
-                    <label className="toggle-switch">
-                      <input
-                        type="checkbox"
-                        checked={showAllFiles}
-                        onChange={() => setShowAllFiles(!showAllFiles)}
-                      />
-                      <span className="slider"></span>
-                    </label>
-                    <span>Show all files</span>
-                  </div>
+                  {isDoiSearch ? (
+                    <div />
+                  ) : (
+                    <div className="toggle-container">
+                      <label className="toggle-switch">
+                        <input
+                          type="checkbox"
+                          checked={showAllFiles}
+                          onChange={() => setShowAllFiles(!showAllFiles)}
+                        />
+                        <span className="slider"></span>
+                      </label>
+                      <span>Show all files</span>
+                    </div>
+                  )}
                 </div>
               )}
+              {doiResult && <DoiResult book={doiResult} onDownload={handleDownload} />}
               {results.length > 0 && (
                 <ResultsGrid
                   results={results}
@@ -195,7 +225,7 @@ const AppContent = () => {
           />
         )}
       </div>
-    </div>
+    </>
   );
 };
 

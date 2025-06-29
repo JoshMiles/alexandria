@@ -48,14 +48,14 @@ body {
 
 .app-container {
   display: flex;
+  flex-direction: column;
   height: 100vh;
 }
 
-.app-container {
+.content-wrapper {
   display: flex;
-  height: 100vh;
-  background-color: var(--background);
-  color: var(--foreground);
+  flex-grow: 1;
+  overflow: hidden;
 }
 
 .left-panel {
@@ -69,6 +69,7 @@ body {
   display: flex;
   flex: 1;
   overflow: hidden;
+  flex-direction: column;
 }
 
 .app-footer {

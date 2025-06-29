@@ -20,9 +20,23 @@ const BookCard: React.FC<BookCardProps> = ({ book, onDownload, libgenUrl, downlo
   const detailsRef = useRef<HTMLDivElement>(null);
 
   const handleImageError = () => {
+    console.log(`Cover image failed to load for ${book.title}, trying thumbnail.`);
     if (book.thumbnail) {
       setCoverUrl(book.thumbnail);
+    } else {
+      console.warn(`No thumbnail available for ${book.title}.`);
     }
+  };
+
+  const handleDownloadClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    console.log(`Download button clicked for: ${book.title}`);
+    onDownload(book);
+  };
+
+  const handleToggleExpand = () => {
+    console.log(`Toggling expand for ${book.title}. New state: ${!isExpanded}`);
+    onToggleExpand();
   };
 
   const downloadButtonText = useMemo(() => {
@@ -46,15 +60,15 @@ const BookCard: React.FC<BookCardProps> = ({ book, onDownload, libgenUrl, downlo
       className={`book-card ${isExpanded ? 'expanded' : ''}`}
       style={{ willChange: 'transform, opacity' }}
     >
-      <div className={isExpanded ? 'expanded-book-cover' : 'book-cover'} onClick={onToggleExpand}>
+      <div className={isExpanded ? 'expanded-book-cover' : 'book-cover'} onClick={handleToggleExpand}>
         <LazyLoadImage
           alt={book.title}
           src={coverUrl}
-          effect="blur"
           onError={handleImageError}
           width="100%"
           height="100%"
           style={{ objectFit: 'cover' }}
+          effect="blur"
         />
       </div>
       <div className="book-info">
@@ -87,7 +101,7 @@ const BookCard: React.FC<BookCardProps> = ({ book, onDownload, libgenUrl, downlo
                 <span className="chip">{book.language}</span>
                 <span className="chip">{book.extension}</span>
               </div>
-              <button className="close-button" onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}>
+              <button className="close-button" onClick={(e) => { e.stopPropagation(); handleToggleExpand(); }}>
                 <FiX />
               </button>
             </div>
@@ -132,7 +146,10 @@ const BookCard: React.FC<BookCardProps> = ({ book, onDownload, libgenUrl, downlo
                     target="_blank"
                     rel="noopener noreferrer"
                     className="mirror-button"
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      console.log(`Opening mirror link: ${fullUrl}`);
+                    }}
                     title="Opens in Browser"
                   >
                     {`Mirror ${index + 1} (${domain})`}
@@ -144,10 +161,7 @@ const BookCard: React.FC<BookCardProps> = ({ book, onDownload, libgenUrl, downlo
           <div className="book-card-download-actions">
             <button
               className="download-button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDownload(book);
-              }}
+              onClick={handleDownloadClick}
               disabled={!!downloadState}
             >
               {downloadButtonText}

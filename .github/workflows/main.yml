@@ -27,14 +27,45 @@ jobs:
 
       - name: Update README.md download links
         run: |
-          VERSION="${{ steps.get_version.outputs.version }}"
-          REPO="JoshMiles/alexandria"
-          MAC_URL="https://github.com/$REPO/releases/download/v$VERSION/Alexandria-$VERSION-arm64.dmg"
-          WIN_URL="https://github.com/$REPO/releases/download/v$VERSION/Alexandria-Setup-$VERSION.exe"
-          LINUX_URL="https://github.com/$REPO/releases/download/v$VERSION/Alexandria-$VERSION.AppImage"
+          python <<EOF
+          import re
       
-          echo "import re\\n\\nreadme = 'README.md'\\nwith open(readme, encoding='utf-8') as f:\\n    content = f.read()\\n\\ntable_pattern = re.compile(r'(\\| *Platform *\\| *Download Link *\\|[\\r\\n]+\\|[-| ]+\\|[\\r\\n]+)(\\|.*\\|.*\\|[\\r\\n]+){3}', re.IGNORECASE)\\n\\nnew_table = (\\n    '| Platform | Download Link |\\n'\\n    '|----------|--------------|\\n'\\n    f'| **Windows**  | [Alexandria-Setup-{VERSION}.exe]({WIN_URL}) |\\n'\\n    f'| **macOS**    | [Alexandria-{VERSION}-arm64.dmg]({MAC_URL}) |\\n'\\n    f'| **Linux**    | [Alexandria-{VERSION}.AppImage]({LINUX_URL}) |\\n'\\n)\\n\\nif table_pattern.search(content):\\n    content = table_pattern.sub(r\"\\\\1\" + new_table, content)\\nelse:\\n    content = re.sub(r'(## 🚀 Latest Release[\\r\\n]+)', r\"\\\\1\" + new_table + \"\\n\", content, count=1)\\n\\nwith open(readme, 'w', encoding='utf-8') as f:\\n    f.write(content)\\n" | python3
-
+          readme = 'README.md'
+          with open(readme, encoding='utf-8') as f:
+              content = f.read()
+      
+          VERSION = "${{ steps.get_version.outputs.version }}"
+          REPO = "JoshMiles/alexandria"
+          MAC_URL = f"https://github.com/{REPO}/releases/download/v{VERSION}/Alexandria-{VERSION}-arm64.dmg"
+          WIN_URL = f"https://github.com/{REPO}/releases/download/v{VERSION}/Alexandria-Setup-{VERSION}.exe"
+          LINUX_URL = f"https://github.com/{REPO}/releases/download/v{VERSION}/Alexandria-{VERSION}.AppImage"
+      
+          table_pattern = re.compile(
+              r'(\| *Platform *\| *Download Link *\|[\\r\\n]+\\|[-| ]+\\|[\\r\\n]+)(\\|.*\\|.*\\|[\\r\\n]+){3}',
+              re.IGNORECASE
+          )
+      
+          new_table = (
+              "| Platform | Download Link |\n"
+              "|----------|--------------|\n"
+              f"| **Windows**  | [Alexandria-Setup-{VERSION}.exe]({WIN_URL}) |\n"
+              f"| **macOS**    | [Alexandria-{VERSION}-arm64.dmg]({MAC_URL}) |\n"
+              f"| **Linux**    | [Alexandria-{VERSION}.AppImage]({LINUX_URL}) |\n"
+          )
+      
+          if table_pattern.search(content):
+              content = table_pattern.sub(r"\\1" + new_table, content)
+          else:
+              content = re.sub(
+                  r'(## 🚀 Latest Release[\\r\\n]+)',
+                  r"\\1" + new_table + "\n",
+                  content,
+                  count=1
+              )
+      
+          with open(readme, 'w', encoding='utf-8') as f:
+              f.write(content)
+          EOF
       - name: Commit and push changes
         uses: stefanzweifel/git-auto-commit-action@v5
         with:

@@ -1,14 +1,12 @@
-import { app, BrowserWindow, ipcMain, shell, dialog } from 'electron';
-import path from 'path';
-import log from 'electron-log';
-import fs from 'fs';
-import { pipeline } from 'stream';
-import Store from 'electron-store';
-import got from 'got';
-import { autoUpdater } from 'electron-updater';
-import { search, getDownloadLinks, resolveDirectDownloadLink } from './dist/backend.js';
-
-const __dirname = path.dirname(new URL(import.meta.url).pathname);
+const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
+const path = require('path');
+const log = require('electron-log');
+const fs = require('fs');
+const { pipeline } = require('stream');
+const Store = require('electron-store');
+let got;
+const { autoUpdater } = require('electron-updater');
+const { search, getDownloadLinks, resolveDirectDownloadLink } = require('./dist/backend.js');
 
 let store;
 let downloadItems = {};
@@ -20,11 +18,9 @@ log.info('App starting...');
 autoUpdater.logger = log;
 
 function createWindow() {
-  const version = app.getVersion();
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
-    title: `Alexandria - ${version}`,
     webPreferences: {
       preload: path.join(__dirname, 'dist/preload.js'),
       contextIsolation: true,
@@ -32,6 +28,8 @@ function createWindow() {
     },
   });
 
+  const version = app.getVersion();
+  mainWindow.setTitle(`Alexandria - ${version}`);
   mainWindow.loadFile('dist/index.html');
   
   mainWindow.once('ready-to-show', () => {
@@ -39,7 +37,8 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  got = (await import('got')).default;
   store = new Store();
   
   const downloads = store.get('downloads', []);

@@ -53,7 +53,7 @@ module.exports = [
       path: path.resolve(__dirname, 'dist'),
       filename: 'backend.js',
       library: {
-        type: 'module',
+        type: 'commonjs2',
       },
     },
     resolve: {
@@ -72,9 +72,6 @@ module.exports = [
           },
         },
       ],
-    },
-    experiments: {
-      outputModule: true,
     },
   },
   {

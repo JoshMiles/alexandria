@@ -14,10 +14,10 @@ _Alexandria_ is a modern UI for searching Library Genesis (LibGen), featuring a 
 Download the latest release for your platform:
 
 | Platform | Download Link |
-|----------|--------------|
-| **Windows**  | [alexandria-latest-win.zip](https://github.com/JoshMiles/alexandria/releases/latest/download/alexandria-win.zip) |
-| **macOS**    | [alexandria-latest-mac.zip](https://github.com/JoshMiles/alexandria/releases/latest/download/alexandria-mac.zip) |
-| **Linux**    | [alexandria-latest-linux.tar.gz](https://github.com/JoshMiles/alexandria/releases/latest/download/alexandria-linux.tar.gz) |
+|----------|---------------|
+| macOS    | [Download](https://github.com/JoshMiles/alexandria/releases/download/v1.2.3/Alexandria-1.2.3-arm64.dmg) |
+| Windows  | [Download](https://github.com/JoshMiles/alexandria/releases/download/v1.2.3/Alexandria-Setup-1.2.3.exe) |
+| Linux    | [Download](https://github.com/JoshMiles/alexandria/releases/download/v1.2.3/Alexandria-1.2.3.AppImage) |
 
 > _Note: If the asset names differ, adjust the links above to match the actual release files._
 

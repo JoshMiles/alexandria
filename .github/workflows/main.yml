@@ -72,3 +72,4 @@ jobs:
         with:
           commit_message: "chore: update README.md download links for release v${{ steps.get_version.outputs.version }}"
           file_pattern: README.md
+          branch: main 

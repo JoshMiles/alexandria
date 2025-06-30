@@ -39,7 +39,7 @@ declare global {
       getVersion: () => Promise<string>;
       search: (query: string) => Promise<Book[]>;
       openLink: (link: string) => void;
-      on: (channel: 'update-message', callback: (message: string) => void) => void;
+      on: (channel: 'update-message' | 'search-status', callback: (message: string) => void) => void;
       minimize: () => void;
       maximize: () => void;
       close: () => void;
@@ -51,6 +51,12 @@ declare global {
       getDownloads: () => Promise<Download[]>;
       onDownloadsUpdated: (callback: (downloads: Download[]) => void) => void;
       onDownloadProgress: (callback: (progress: { clientId: string; progress: any }) => void) => void;
+      getDownloadLocation: () => Promise<string | null>;
+      getLibgenAccessInfo: () => Promise<{ mirrors: string[]; proxies: string[]; currentMethod: string | null; lastError: string | null }>;
+      resetLibgenAccessMethod: () => Promise<boolean>;
+      addLibgenMirror: (url: string) => Promise<{ mirrors: string[]; currentMethod: string | null; lastError: string | null }>;
+      removeLibgenMirror: (url: string) => Promise<{ mirrors: string[]; currentMethod: string | null; lastError: string | null }>;
+      testLibgenAccess: () => Promise<{ success: boolean; workingMirror: string | null; error: string | null }>;
     };
   }
 }

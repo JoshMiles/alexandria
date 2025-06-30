@@ -10,7 +10,8 @@
     "dist": "electron-builder",
     "clean": "rm -rf dist node_modules/.cache/webpack",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "analyze": "webpack --analyze"
   },
   "keywords": [],
   "author": {
@@ -36,10 +37,12 @@
     "react-icons": "^5.5.0",
     "react-lazy-load-image-component": "^1.6.3",
     "react-spring": "^10.0.1",
+    "socks-proxy-agent": "^8.0.5",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@babel/core": "^7.24.7",
+    "@babel/plugin-transform-runtime": "^7.24.7",
     "@babel/preset-env": "^7.24.7",
     "@babel/preset-react": "^7.24.7",
     "@babel/preset-typescript": "^7.24.7",
@@ -51,7 +54,10 @@
     "@types/uuid": "^10.0.0",
     "babel-jest": "^30.0.2",
     "babel-loader": "^10.0.0",
+    "babel-plugin-transform-remove-console": "^6.9.4",
+    "core-js": "^3.36.0",
     "css-loader": "^7.1.2",
+    "css-minimizer-webpack-plugin": "^6.0.0",
     "electron": "^37.1.0",
     "electron-builder": "^26.0.12",
     "html-webpack-plugin": "^5.6.0",
@@ -59,9 +65,11 @@
     "jest": "^30.0.3",
     "jest-environment-jsdom": "^30.0.2",
     "style-loader": "^4.0.0",
+    "terser-webpack-plugin": "^5.3.10",
     "ts-jest": "^29.4.0",
     "typescript": "^5.4.5",
     "webpack": "^5.99.9",
+    "webpack-bundle-analyzer": "^4.10.1",
     "webpack-cli": "^6.0.1"
   },
   "build": {

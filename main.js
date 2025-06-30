@@ -3,10 +3,12 @@ const path = require('path');
 const log = require('electron-log');
 const fs = require('fs');
 const { pipeline } = require('stream');
+const os = require('os');
+const https = require('https');
 let Store;
 let got;
 const { autoUpdater } = require('electron-updater');
-const { search, getDownloadLinks, resolveDirectDownloadLink, getSciHubDownloadLink } = require('./dist/backend.js');
+const { search, getDownloadLinks, resolveDirectDownloadLink, getSciHubDownloadLink, getLibgenAccessInfo, resetLibgenAccessMethod, addLibgenMirror, removeLibgenMirror, testLibgenAccess } = require('./dist/backend.js');
 
 let store;
 let downloadItems = {};
@@ -56,6 +58,9 @@ function createWindow() {
   mainWindow.setTitle(`Alexandria - ${version}`);
   mainWindow.loadFile('dist/index.html');
   
+  // Maximize the window by default
+  mainWindow.maximize();
+  
   mainWindow.on('closed', () => {
     log.info('Main window closed.');
     mainWindow = null;
@@ -84,24 +89,60 @@ app.whenReady().then(async () => {
     startupWindow.webContents.send('update-message', `Update available: ${info.version}`);
   });
 
-  autoUpdater.on('update-not-available', () => {
+  autoUpdater.on('update-not-available', async () => {
     startupWindow.webContents.send('update-message', 'No updates available.');
-    setTimeout(() => {
+    // Start LibGen access check after update check
+    setTimeout(async () => {
       if (startupWindow) {
-        startupWindow.close();
+        log.info('Performing LibGen access check...');
+        try {
+          const result = await testLibgenAccess(startupWindow, log);
+          if (result.success) {
+            log.info(`LibGen access check successful. Working mirror: ${result.workingMirror}`);
+          } else {
+            log.warn(`LibGen access check failed: ${result.error}`);
+          }
+        } catch (error) {
+          log.error('Error during LibGen access check:', error);
+        }
+        
+        // Close startup window and create main window
+        setTimeout(() => {
+          if (startupWindow) {
+            startupWindow.close();
+          }
+          createWindow();
+        }, 1000);
       }
-      createWindow();
-    }, 2000);
+    }, 1000);
   });
 
-  autoUpdater.on('error', (err) => {
+  autoUpdater.on('error', async (err) => {
     startupWindow.webContents.send('update-message', `Error in auto-updater: ${err.toString()}`);
-    setTimeout(() => {
+    // Start LibGen access check even if update check failed
+    setTimeout(async () => {
       if (startupWindow) {
-        startupWindow.close();
+        log.info('Performing LibGen access check...');
+        try {
+          const result = await testLibgenAccess(startupWindow, log);
+          if (result.success) {
+            log.info(`LibGen access check successful. Working mirror: ${result.workingMirror}`);
+          } else {
+            log.warn(`LibGen access check failed: ${result.error}`);
+          }
+        } catch (error) {
+          log.error('Error during LibGen access check:', error);
+        }
+        
+        // Close startup window and create main window
+        setTimeout(() => {
+          if (startupWindow) {
+            startupWindow.close();
+          }
+          createWindow();
+        }, 1000);
       }
-      createWindow();
-    }, 2000);
+    }, 1000);
   });
 
   autoUpdater.on('download-progress', (progressObj) => {
@@ -116,12 +157,30 @@ app.whenReady().then(async () => {
   if (app.isPackaged) {
     autoUpdater.checkForUpdates();
   } else {
-    setTimeout(() => {
+    // In development, skip update check but still do LibGen check
+    setTimeout(async () => {
       if (startupWindow) {
-        startupWindow.close();
+        log.info('Performing LibGen access check...');
+        try {
+          const result = await testLibgenAccess(startupWindow, log);
+          if (result.success) {
+            log.info(`LibGen access check successful. Working mirror: ${result.workingMirror}`);
+          } else {
+            log.warn(`LibGen access check failed: ${result.error}`);
+          }
+        } catch (error) {
+          log.error('Error during LibGen access check:', error);
+        }
+        
+        // Close startup window and create main window
+        setTimeout(() => {
+          if (startupWindow) {
+            startupWindow.close();
+          }
+          createWindow();
+        }, 1000);
       }
-      createWindow();
-    }, 2000);
+    }, 1000);
   }
 
   app.on('activate', () => {
@@ -436,4 +495,28 @@ ipcMain.handle('get-version', () => {
   const version = app.getVersion();
   log.info(`Fetching app version: ${version}`);
   return version;
+});
+
+// IPC handler to get LibGen access info
+ipcMain.handle('get-libgen-access-info', async () => {
+  return await getLibgenAccessInfo();
+});
+
+// IPC handler to reset LibGen access method
+ipcMain.handle('reset-libgen-access-method', () => {
+  return resetLibgenAccessMethod();
+});
+
+ipcMain.handle('add-libgen-mirror', async (event, url) => {
+  return await addLibgenMirror(url);
+});
+
+ipcMain.handle('remove-libgen-mirror', async (event, url) => {
+  return await removeLibgenMirror(url);
+});
+
+// IPC handler to test LibGen access
+ipcMain.handle('test-libgen-access', async (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
+  return await testLibgenAccess(win, log);
 });

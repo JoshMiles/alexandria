@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { FiSearch, FiSettings } from 'react-icons/fi';
 import { Book } from './types';
 import { DownloadProvider, useDownloads } from './contexts/DownloadContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { useSearch } from './hooks/useSearch';
 import Sidebar from './components/Sidebar';
 import ResultsGrid from './components/ResultsGrid';
 import Notification from './components/Notification';
@@ -13,20 +15,7 @@ import DoiResult from './components/DoiResult';
 import './styles.css';
 import { v4 as uuidv4 } from 'uuid';
 
-declare global {
-  interface Window {
-    electron: {
-      search: (query: string) => Promise<Book[]>;
-      openLink: (link: string) => void;
-      on: (channel: string, callback: (...args: any[]) => void) => void;
-      minimize: () => void;
-      maximize: () => void;
-      close: () => void;
-    };
-  }
-}
-
-const App = () => (
+const App: React.FC = () => (
   <DownloadProvider>
     <ThemeProvider>
       <div className="app-container">
@@ -34,104 +23,167 @@ const App = () => (
         <div className="content-wrapper">
           <AppContent />
         </div>
+        <NotificationPortal />
       </div>
     </ThemeProvider>
   </DownloadProvider>
 );
 
+const NOTIFICATION_DISPLAY_TIME = 2500; // ms
+
 const AppContent = () => {
   const { libgenUrl } = useTheme();
-  const [query, setQuery] = useState('');
-  const [unfilteredResults, setUnfilteredResults] = useState<Book[]>([]);
-  const [results, setResults] = useState<Book[]>([]);
-  const [doiResult, setDoiResult] = useState<Book | null>(null);
-  const [isDoiSearch, setIsDoiSearch] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [statusText, setStatusText] = useState('Ready');
-  const [error, setError] = useState('');
-  const [noResults, setNoResults] = useState(false);
-  const [notification, setNotification] = useState<{ id: string; message: string; type: 'success' | 'error' | 'info' } | null>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const { downloads, handleDownload, handleCancelDownload, handleOpenFile, handleOpenFolder, handleClearDownloads } = useDownloads();
+  
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [randomFact, setRandomFact] = useState('');
   const [randomFactAuthor, setRandomFactAuthor] = useState('');
-  const [showAllFiles, setShowAllFiles] = useState(false);
+  const [showAllFiles, setShowAllFiles] = useState(true);
+  const [searchStatus, setSearchStatus] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const handleToggleSettings = () => {
-    setShowSettings(!showSettings);
-  };
+  const handleToggleSettings = useCallback(() => {
+    setShowSettings(prev => !prev);
+  }, []);
 
-  const handleLogoClick = () => {
+  const handleLogoClick = useCallback(() => {
     setShowSettings(false);
-  };
+  }, []);
 
-  const handleBack = () => {
-    setResults([]);
-    setDoiResult(null);
-    setIsDoiSearch(false);
+  const handleSearchComplete = useCallback(() => {
+    setIsSearching(false);
+  }, []);
+
+  // Use optimized search hook
+  const {
+    query,
+    results,
+    unfilteredResults,
+    doiResult,
+    isDoiSearch,
+    loading,
+    error,
+    noResults,
+    search,
+    searchImmediate,
+    clearResults,
+    setQuery
+  } = useSearch(handleSearchComplete);
+
+  const handleBack = useCallback(() => {
+    clearResults();
     setQuery('');
-  };
+    setSearchStatus('');
+    setIsSearching(false);
+  }, [clearResults, setQuery]);
+
+  const handleSearch = useCallback(async () => {
+    if (!query.trim()) return;
+    
+    // Clear any previous results and status
+    clearResults();
+    setSearchStatus('');
+    
+    setIsSearching(true);
+    setSearchStatus('Searching...');
+    
+    try {
+      await searchImmediate(query);
+    } catch (error) {
+      console.error('Search error:', error);
+      setIsSearching(false);
+      setSearchStatus('');
+    }
+  }, [query, searchImmediate, clearResults]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  }, [handleSearch]);
+
+  const handleQueryChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuery(e.target.value);
+  }, [setQuery]);
+
+  // Filter results based on showAllFiles
+  const filteredResults = useMemo(() => {
+    return showAllFiles ? unfilteredResults : unfilteredResults.filter(book => book.isbn);
+  }, [showAllFiles, unfilteredResults]);
+
+  // Add client IDs to results
+  const resultsWithIds = useMemo(() => {
+    console.log('Computing resultsWithIds:', filteredResults.length, 'results');
+    return filteredResults.map((book) => ({ 
+      ...book, 
+      client_id: book.client_id || uuidv4() 
+    }));
+  }, [filteredResults]);
 
   useEffect(() => {
-    const filtered = showAllFiles ? unfilteredResults : unfilteredResults.filter(book => book.isbn);
-    setResults(filtered);
-  }, [showAllFiles, unfilteredResults]);
+    console.log('Results state changed:', {
+      loading,
+      isSearching,
+      resultsWithIds: resultsWithIds.length,
+      doiResult: !!doiResult,
+      error,
+      noResults
+    });
+  }, [loading, isSearching, resultsWithIds.length, doiResult, error, noResults]);
 
   useEffect(() => {
     searchInputRef.current?.focus();
-    window.electron.on('search-status', (message) => {
-      setStatusText(message);
-    });
-    fetch('https://api.quotable.kurokeita.dev/api/quotes/random')
-      .then(response => response.json())
-      .then(data => {
+    
+    const handleSearchStatus = (message: string) => {
+      console.log('Received search status:', message);
+      setSearchStatus(message);
+      let type: 'success' | 'error' | 'info' = 'info';
+      if (/successfully connected|found working mirror/i.test(message)) {
+        type = 'success';
+      } else if (/cannot reach|failed|all mirrors and proxy failed/i.test(message)) {
+        type = 'error';
+      } else if (/trying libgen mirror|trying free proxy/i.test(message)) {
+        type = 'info';
+      }
+      // Suppress toasts for connection/connecting messages
+      if (
+        /connecting to libgen|successfully connected|testing main libgen domain|main libgen domain is working|testing mirror|parsing search results|fetching book metadata|enriching data with google books/i.test(message)
+      ) {
+        return;
+      }
+      if (type !== 'info' || /error|failed|successfully connected|found working mirror/i.test(message)) {
+        window.dispatchEvent(new CustomEvent('show-notification', {
+          detail: { id: `search-status-${Date.now()}`, message, type }
+        }));
+      }
+    };
+
+    window.electron.on('search-status', handleSearchStatus);
+
+    // Fetch random fact
+    const fetchRandomFact = async () => {
+      try {
+        const response = await fetch('https://api.quotable.kurokeita.dev/api/quotes/random');
+        const data = await response.json();
         setRandomFact(data.quote.content);
         setRandomFactAuthor(data.quote.author.name);
-      })
-      .catch(err => console.error(err));
+      } catch (err) {
+        console.error('Failed to fetch random fact:', err);
+      }
+    };
+
+    fetchRandomFact();
+
+    return () => {
+      // Cleanup event listener
+      window.electron.on('search-status', () => {});
+    };
   }, []);
 
-  const handleSearch = async () => {
-    if (!query) return;
-    setLoading(true);
-    setStatusText('Searching...');
-    setUnfilteredResults([]);
-    setResults([]);
-    setDoiResult(null);
-    setIsDoiSearch(false);
-    setError('');
-    setNoResults(false);
-
-    const doiRegex = /10\.\d{4,9}\/[-._;()/:A-Z0-9]+$/i;
-    const isDoi = doiRegex.test(query);
-    setIsDoiSearch(isDoi);
-
-    try {
-      const searchResults = await window.electron.search(query);
-      if (isDoi && searchResults.length > 0) {
-        setDoiResult(searchResults[0]);
-        setStatusText('DOI search complete');
-      } else {
-        const resultsWithIds = searchResults.map((book) => ({ ...book, client_id: uuidv4() }));
-        setUnfilteredResults(resultsWithIds);
-        if (resultsWithIds.length === 0) {
-          setNoResults(true);
-          setStatusText('No results found');
-        } else {
-          setStatusText('Search complete');
-        }
-      }
-    } catch (err) {
-      console.error('Search error:', err);
-      setError('Failed to search. Please try again.');
-      setNotification({ id: 'search-failed', message: 'Search failed. Please check your connection.', type: 'error' });
-      setStatusText('Search failed');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const showWelcomeMessage = !loading && !error && !noResults && resultsWithIds.length === 0 && !doiResult;
 
   return (
     <>
@@ -146,49 +198,59 @@ const AppContent = () => {
           onSettingsClick={handleToggleSettings}
         />
       </div>
-      <div className="main-content">
+              <div className="main-content">
         <div className="main-view">
-          {showSettings ? (
-            <Settings onClose={handleToggleSettings} />
-          ) : (
-            <>
-              <div className="search-bar-container">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={showSettings ? 'settings' : 'main'}
+              initial={{ opacity: 0, x: showSettings ? 20 : -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: showSettings ? -20 : 20 }}
+              transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+            >
+              {showSettings ? (
+                <Settings onClose={handleToggleSettings} />
+              ) : (
+                <>
+                  <div className="search-bar-container">
                 <div className="search-bar">
                   <FiSearch className="search-icon" />
                   <input
                     ref={searchInputRef}
                     type="text"
                     value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    placeholder="Search for books, articles, and more..."
+                    onChange={handleQueryChange}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Search for books, author(s), and DOIs..."
                     className="search-input"
                   />
                 </div>
               </div>
-              {loading && (
+              
+              {(loading || isSearching) && (
                 <div className="loading-container">
                   <div className="spinner"></div>
-                  <p className="status-text">{statusText}</p>
+                  <p className="status-text">{searchStatus || 'Searching...'}</p>
                 </div>
               )}
+              
               {error && <p className="error-message">{error}</p>}
               {noResults && <p className="no-results-message">No results found for "{query}"</p>}
-              {!loading && !error && !noResults && results.length === 0 && !doiResult && (
+              
+              {showWelcomeMessage && (
                 <div className="welcome-message">
                   <p><i>"{randomFact}"</i></p>
                   <p><i>- {randomFactAuthor}</i></p>
                 </div>
               )}
-              {(results.length > 0 || doiResult) && (
+              
+              {(resultsWithIds.length > 0 || doiResult) && (
                 <div className="search-results-header">
                   <button className="back-button" onClick={handleBack}>
                     Back
                   </button>
                   <h2>Search Results</h2>
-                  {isDoiSearch ? (
-                    <div />
-                  ) : (
+                  {!isDoiSearch && (
                     <div className="toggle-container">
                       <label className="toggle-switch">
                         <input
@@ -203,10 +265,11 @@ const AppContent = () => {
                   )}
                 </div>
               )}
+              
               {doiResult && <DoiResult book={doiResult} onDownload={handleDownload} />}
-              {results.length > 0 && (
+              {resultsWithIds.length > 0 && (
                 <ResultsGrid
-                  results={results}
+                  results={resultsWithIds}
                   onDownload={handleDownload}
                   libgenUrl={libgenUrl}
                   downloads={downloads}
@@ -214,18 +277,53 @@ const AppContent = () => {
                   setExpandedCard={setExpandedCard}
                 />
               )}
-            </>
-          )}
+                </>
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
-        {notification && (
-          <Notification
-            message={notification.message}
-            type={notification.type}
-            onClose={() => setNotification(null)}
-          />
-        )}
       </div>
     </>
+  );
+};
+
+// NotificationPortal renders the notification at the app root
+const NotificationPortal = () => {
+  const [notification, setNotification] = useState<{ id: string; message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [notificationQueue, setNotificationQueue] = useState<{ id: string; message: string; type: 'success' | 'error' | 'info' }[]>([]);
+  const notificationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Listen for custom events from AppContent
+  useEffect(() => {
+    const handleShowNotification = (event: CustomEvent) => {
+      setNotificationQueue((q) => [...q, event.detail]);
+    };
+    window.addEventListener('show-notification', handleShowNotification as EventListener);
+    return () => {
+      window.removeEventListener('show-notification', handleShowNotification as EventListener);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!notification && notificationQueue.length > 0) {
+      setNotification(notificationQueue[0]);
+      notificationTimeoutRef.current = setTimeout(() => {
+        setNotification(null);
+        setNotificationQueue((q) => q.slice(1));
+      }, NOTIFICATION_DISPLAY_TIME);
+    }
+    return () => {
+      if (notificationTimeoutRef.current) clearTimeout(notificationTimeoutRef.current);
+    };
+  }, [notification, notificationQueue]);
+
+  if (!notification) return null;
+  return (
+    <Notification
+      message={notification.message}
+      type={notification.type}
+      onClose={() => setNotification(null)}
+    />
   );
 };
 

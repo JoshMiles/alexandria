@@ -22,7 +22,7 @@ const ThemeContext = createContext({
 
 export const useTheme = () => useContext(ThemeContext);
 
-export const ThemeProvider = ({ children }) => {
+export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setTheme] = useState(localStorage.getItem('theme') || defaultSettings.theme);
   const [lightAccent, setLightAccent] = useState(localStorage.getItem('lightAccent') || defaultSettings.lightAccent);
   const [darkAccent, setDarkAccent] = useState(localStorage.getItem('darkAccent') || defaultSettings.darkAccent);

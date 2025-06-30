@@ -13,7 +13,7 @@ interface DownloadContextType {
 
 const DownloadContext = createContext<DownloadContextType | undefined>(undefined);
 
-export const DownloadProvider: React.FC = ({ children }) => {
+export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [downloads, setDownloads] = useState<Download[]>([]);
   const [notification, setNotification] = useState<{ id: string; message: string; type: 'success' | 'error' | 'info' } | null>(null);
 

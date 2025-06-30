@@ -4,9 +4,15 @@
   gap: 2rem;
   padding: 1rem 2rem;
   max-width: 100%;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
 }
 
 .results-grid.card-expanded {
   grid-template-columns: 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  max-width: 100%;
+  overflow: hidden;
 }
 

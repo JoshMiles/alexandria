@@ -17,6 +17,14 @@
   padding: 1.5rem;
   margin-bottom: 2rem;
   border: 1px solid var(--border);
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transform: translateY(0);
+}
+
+.setting-section:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  border-color: var(--accent);
 }
 
 .setting-section h2 {
@@ -158,9 +166,180 @@
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transform: translateY(0);
+  position: relative;
+  overflow: hidden;
+}
+
+.reset-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.reset-button:hover::before {
+  left: 100%;
 }
 
 .reset-button:hover {
   background-color: var(--accent-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.reset-button:active {
+  transform: translateY(0);
+  transition: transform 0.1s;
+}
+
+.libgen-access-card {
+  background: var(--background-light);
+  border-radius: 16px;
+  box-shadow: 0 4px 16px 0 rgba(138, 43, 226, 0.08);
+  border: 1.5px solid var(--border);
+  padding: 2rem 1.5rem 1.5rem 1.5rem;
+  margin-bottom: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  position: relative;
+}
+
+.libgen-access-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+
+.libgen-access-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.libgen-chip {
+  background: var(--background-lighter);
+  color: var(--foreground-dark);
+  border-radius: 12px;
+  padding: 0.3rem 0.9rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  box-shadow: 0 1px 4px #8a2be210;
+  transition: background 0.2s;
+}
+
+.libgen-chip.current {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 2px 8px #8a2be220;
+}
+
+.libgen-chip .remove-btn {
+  background: none;
+  border: none;
+  color: var(--foreground-dark);
+  font-size: 1.1rem;
+  cursor: pointer;
+  margin-left: 0.2rem;
+  transition: color 0.2s;
+}
+
+.libgen-chip .remove-btn:hover {
+  color: var(--accent);
+}
+
+.libgen-access-add-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.libgen-access-add-row input {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--background-lighter);
+  color: var(--foreground);
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.libgen-access-add-row input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.libgen-access-add-row button {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 1.2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.libgen-access-add-row button:hover {
+  background: var(--accent-hover);
+}
+
+.libgen-access-divider {
+  border-top: 1px solid var(--border-light);
+  margin: 1.2rem 0 0.8rem 0;
+}
+
+.libgen-access-status-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 1.05rem;
+  margin-bottom: 0.5rem;
+}
+
+.libgen-access-status-row .current-method {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.libgen-access-status-row .last-error {
+  color: #dc3545;
+  font-size: 0.98rem;
+}
+
+.libgen-access-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.libgen-access-actions .reset-button {
+  width: auto;
+  min-width: 140px;
+  padding: 0.7rem 1.2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  flex: 1;
+  min-width: 160px;
 }

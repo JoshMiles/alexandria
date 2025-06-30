@@ -1,18 +1,149 @@
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #282c34;
+  background: #23272f;
   color: white;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
+  min-height: 100vh;
+  min-width: 100vw;
+  overflow: hidden;
 }
 
-.startup-container {
+.startup-bg {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100vw; height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at 60% 40%, #8a2be2 0%, #23272f 80%);
+  animation: bg-glow 8s ease-in-out infinite alternate;
+}
+
+@keyframes bg-glow {
+  0% { background-position: 60% 40%; }
+  100% { background-position: 40% 60%; }
+}
+
+.startup-card {
+  background: rgba(30, 32, 40, 0.98);
+  border-radius: 22px;
+  box-shadow: 0 8px 32px 0 rgba(34, 0, 51, 0.25), 0 1.5px 8px 0 rgba(138, 43, 226, 0.10);
+  padding: 1.5rem 1.2rem 1.2rem 1.2rem;
+  min-width: 240px;
+  max-width: 95vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  animation: cardFadeIn 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(138, 43, 226, 0.1);
+}
+
+@keyframes cardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.startup-logo {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #b18fff;
+  text-shadow: 0 2px 16px #8a2be2cc;
+  margin-bottom: 0.2rem;
+  animation: logoGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes logoGlow {
+  from {
+    text-shadow: 0 2px 16px #8a2be2cc;
+  }
+  to {
+    text-shadow: 0 2px 24px #8a2be2ff, 0 0 32px #8a2be266;
+  }
+}
+
+.startup-subtitle {
+  font-size: 1.1rem;
+  color: #bdb8d7;
+  margin-bottom: 1.5rem;
+}
+
+.startup-progress-bar-wrapper {
+  width: 100%;
+  margin-bottom: 0.7rem;
+}
+
+.startup-progress-bar {
+  width: 100%;
+  height: 14px;
+  background: #23213a;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 6px #8a2be220;
+  position: relative;
+}
+
+.startup-progress-bar-inner {
+  height: 100%;
+  background: linear-gradient(90deg, #8a2be2 0%, #a052e2 100%);
+  border-radius: 8px;
+  transition: width 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+  overflow: hidden;
+}
+
+.startup-progress-bar-inner::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+.startup-progress-bar.indeterminate {
+  background: #23213a;
+}
+
+.startup-progress-bar-inner.indeterminate {
+  width: 40%;
+  min-width: 80px;
+  max-width: 100%;
+  position: absolute;
+  left: 0;
+  animation: indeterminate-bar 1.2s infinite cubic-bezier(0.4,0,0.2,1);
+  background: linear-gradient(90deg, #8a2be2 0%, #a052e2 100%);
+}
+
+@keyframes indeterminate-bar {
+  0% { left: -40%; }
+  100% { left: 100%; }
+}
+
+.startup-status {
+  font-size: 0.98rem;
+  color: #e0dfff;
+  margin-top: 0.3rem;
+  min-height: 1.2em;
   text-align: center;
+  word-break: break-word;
 }

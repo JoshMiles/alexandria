@@ -1,5 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
 import { Book } from '../types';
 import './BookCard.css';
 import { FiCalendar, FiFileText, FiGrid, FiHash, FiStar, FiUsers, FiX } from 'react-icons/fi';
@@ -10,34 +9,43 @@ interface BookCardProps {
   book: Book;
   onDownload: (book: Book) => void;
   libgenUrl: string;
-  downloadState?: 'resolving' | 'downloading' | 'completed' | 'failed';
+  downloadState?: 'resolving' | 'downloading' | 'completed' | 'failed' | 'cancelled' | 'browser-download';
   isExpanded: boolean;
   onToggleExpand: () => void;
 }
 
-const BookCard: React.FC<BookCardProps> = ({ book, onDownload, libgenUrl, downloadState, isExpanded, onToggleExpand }) => {
-  const [coverUrl, setCoverUrl] = useState(`${libgenUrl}${book.cover_url.replace('_small', '')}`);
+const BookCard: React.FC<BookCardProps> = React.memo(({ 
+  book, 
+  onDownload, 
+  libgenUrl, 
+  downloadState, 
+  isExpanded, 
+  onToggleExpand 
+}) => {
+  const [coverUrl, setCoverUrl] = useState(() => 
+    `${libgenUrl}${book.cover_url.replace('_small', '')}`
+  );
   const detailsRef = useRef<HTMLDivElement>(null);
 
-  const handleImageError = () => {
-    console.log(`Cover image failed to load for ${book.title}, trying thumbnail.`);
+  const handleImageError = useCallback(() => {
     if (book.thumbnail) {
       setCoverUrl(book.thumbnail);
-    } else {
-      console.warn(`No thumbnail available for ${book.title}.`);
     }
-  };
+  }, [book.thumbnail]);
 
-  const handleDownloadClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleDownloadClick = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
-    console.log(`Download button clicked for: ${book.title}`);
     onDownload(book);
-  };
+  }, [onDownload, book]);
 
-  const handleToggleExpand = () => {
-    console.log(`Toggling expand for ${book.title}. New state: ${!isExpanded}`);
+  const handleToggleExpand = useCallback(() => {
     onToggleExpand();
-  };
+  }, [onToggleExpand]);
+
+  const handleCloseClick = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    onToggleExpand();
+  }, [onToggleExpand]);
 
   const downloadButtonText = useMemo(() => {
     switch (downloadState) {
@@ -54,13 +62,48 @@ const BookCard: React.FC<BookCardProps> = ({ book, onDownload, libgenUrl, downlo
     }
   }, [downloadState]);
 
+  const mirrorButtons = useMemo(() => {
+    return book.mirror_links.map((link, index) => {
+      const fullUrl = link.startsWith('http') ? link : `${libgenUrl}${link}`;
+      const domain = new URL(fullUrl).hostname;
+      
+      return (
+        <a
+          key={`${link}-${index}`}
+          href={fullUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mirror-button"
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
+          title="Opens in Browser"
+        >
+          {`Mirror ${index + 1} (${domain})`}
+        </a>
+      );
+    });
+  }, [book.mirror_links, libgenUrl]);
+
+  const metadataItems = useMemo(() => [
+    { icon: FiHash, label: 'ISBN', value: book.isbn },
+    { icon: FiUsers, label: 'Publisher', value: book.publisher },
+    { icon: FiCalendar, label: 'Published Date', value: book.publishedDate },
+    { icon: FiFileText, label: 'Pages', value: book.pages },
+    { icon: FiGrid, label: 'Categories', value: book.categories?.join(', ') },
+    { icon: FiStar, label: 'Rating', value: book.averageRating ? `${book.averageRating} / 5` : 'N/A' },
+  ], [book.isbn, book.publisher, book.publishedDate, book.pages, book.categories, book.averageRating]);
+
+  const isDownloadDisabled = !!downloadState;
+
   return (
-    <motion.div
-      layout
+    <div
       className={`book-card ${isExpanded ? 'expanded' : ''}`}
-      style={{ willChange: 'transform, opacity' }}
     >
-      <div className={isExpanded ? 'expanded-book-cover' : 'book-cover'} onClick={handleToggleExpand}>
+      <div 
+        className={isExpanded ? 'expanded-book-cover' : 'book-cover'} 
+        onClick={handleToggleExpand}
+      >
         <LazyLoadImage
           alt={book.title}
           src={coverUrl}
@@ -69,108 +112,73 @@ const BookCard: React.FC<BookCardProps> = ({ book, onDownload, libgenUrl, downlo
           height="100%"
           style={{ objectFit: 'cover' }}
           effect="blur"
+          threshold={100}
+          placeholderSrc="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDEyMCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTgwIiBmaWxsPSIjM0M0QzU2Ii8+Cjx0ZXh0IHg9IjYwIiB5PSI5MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TG9hZGluZy4uLjwvdGV4dD4KPC9zdmc+"
         />
       </div>
+      
       <div className="book-info">
         <h3>{book.title}</h3>
         <p>{book.author}</p>
-        
-      <div className="chip-container">
+        <div className="chip-container">
           <span className="chip">{book.language}</span>
           <span className="chip">{book.extension}</span>
         </div>
       </div>
-      <motion.div
-        className="expanded-details-wrapper"
-        initial={{ opacity: 0, height: 0 }}
-        animate={{
-          opacity: isExpanded ? 1 : 0,
-          height: isExpanded ? 'auto' : 0,
-        }}
-        transition={{ duration: 0.3, ease: 'easeInOut' }}
-        style={{ willChange: 'height, opacity' }}
-      >
-        <div ref={detailsRef} className="expanded-details">
-          <div className="expanded-header">
-            <div>
-              <h3>{book.title}</h3>
-              <p>{book.author}</p>
-            </div>
-            <div className="top-right-actions">
-              <div className="top-right-chips">
-                <span className="chip">{book.language}</span>
-                <span className="chip">{book.extension}</span>
+      
+      {isExpanded && (
+        <div className="expanded-details-wrapper">
+          <div ref={detailsRef} className="expanded-details">
+            <div className="expanded-header">
+              <div>
+                <h3>{book.title}</h3>
+                <p>{book.author}</p>
               </div>
-              <button className="close-button" onClick={(e) => { e.stopPropagation(); handleToggleExpand(); }}>
-                <FiX />
+              <div className="top-right-actions">
+                <div className="top-right-chips">
+                  <span className="chip">{book.language}</span>
+                  <span className="chip">{book.extension}</span>
+                </div>
+                <button className="close-button" onClick={handleCloseClick}>
+                  <FiX />
+                </button>
+              </div>
+            </div>
+            
+            {book.description && <p className="description">{book.description}</p>}
+            
+            <div className="metadata-grid">
+              {metadataItems.map(({ icon: Icon, label, value }) => (
+                <div key={label} className="detail-item">
+                  <strong><Icon /> {label}</strong>
+                  <span>{value || 'N/A'}</span>
+                </div>
+              ))}
+            </div>
+            
+            <div className="mirror-links">
+              <h4>Mirrors:</h4>
+              <div className="mirror-buttons">
+                {mirrorButtons}
+              </div>
+            </div>
+            
+            <div className="book-card-download-actions">
+              <button
+                className="download-button"
+                onClick={handleDownloadClick}
+                disabled={isDownloadDisabled}
+              >
+                {downloadButtonText}
               </button>
             </div>
           </div>
-          {book.description && <p className="description">{book.description}</p>}
-          <div className="metadata-grid">
-            <div className="detail-item">
-              <strong><FiHash /> ISBN</strong>
-              <span>{book.isbn}</span>
-            </div>
-            <div className="detail-item">
-              <strong><FiUsers /> Publisher</strong>
-              <span>{book.publisher}</span>
-            </div>
-            <div className="detail-item">
-              <strong><FiCalendar /> Published Date</strong>
-              <span>{book.publishedDate}</span>
-            </div>
-            <div className="detail-item">
-              <strong><FiFileText /> Pages</strong>
-              <span>{book.pages}</span>
-            </div>
-            <div className="detail-item">
-              <strong><FiGrid /> Categories</strong>
-              <span>{book.categories?.join(', ')}</span>
-            </div>
-            <div className="detail-item">
-              <strong><FiStar /> Rating</strong>
-              <span>{book.averageRating ? `${book.averageRating} / 5` : 'N/A'}</span>
-            </div>
-          </div>
-          <div className="mirror-links">
-            <h4>Mirrors:</h4>
-            <div className="mirror-buttons">
-              {book.mirror_links.map((link, index) => {
-                const fullUrl = link.startsWith('http') ? link : `${libgenUrl}${link}`;
-                const domain = new URL(fullUrl).hostname;
-                return (
-                  <a
-                    key={index}
-                    href={fullUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mirror-button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      console.log(`Opening mirror link: ${fullUrl}`);
-                    }}
-                    title="Opens in Browser"
-                  >
-                    {`Mirror ${index + 1} (${domain})`}
-                  </a>
-                );
-              })}
-            </div>
-          </div>
-          <div className="book-card-download-actions">
-            <button
-              className="download-button"
-              onClick={handleDownloadClick}
-              disabled={!!downloadState}
-            >
-              {downloadButtonText}
-            </button>
-          </div>
         </div>
-      </motion.div>
-    </motion.div>
+      )}
+    </div>
   );
-};
+});
+
+BookCard.displayName = 'BookCard';
 
 export default BookCard;

@@ -70,6 +70,7 @@ body {
   flex: 1;
   overflow: hidden;
   flex-direction: column;
+  min-width: 0;
 }
 
 .app-footer {
@@ -107,6 +108,8 @@ body {
 .main-view {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
 }
 
 .search-bar-container {
@@ -143,12 +146,20 @@ body {
   border-radius: 8px;
   background-color: var(--background-light);
   color: var(--foreground);
-  transition: border-color 0.2s;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transform: translateY(0);
 }
 
 .search-bar input:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+  transform: translateY(-2px);
+}
+
+.search-bar input:hover {
+  border-color: var(--border-light);
+  transform: translateY(-1px);
 }
 
 .toggle-container {
@@ -237,6 +248,12 @@ input:checked + .slider:before {
   align-items: center;
   justify-content: center;
   margin-top: 4rem;
+  opacity: 1;
+  transition: opacity 0.5s ease-in-out;
+}
+
+.loading-container.fade-out {
+  opacity: 0;
 }
 
 .loading-container .spinner {
@@ -254,8 +271,23 @@ input:checked + .slider:before {
   border-top: 3px solid var(--accent);
   width: 30px;
   height: 30px;
-  animation: spin 0.8s linear infinite;
+  animation: spin 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
   margin: 4rem auto;
+  position: relative;
+}
+
+.spinner::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  border: 3px solid transparent;
+  border-radius: 50%;
+  border-top: 3px solid var(--accent);
+  opacity: 0.3;
+  animation: spin 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite reverse;
 }
 
 @keyframes spin {
@@ -294,4 +326,13 @@ input:checked + .slider:before {
   border-radius: 8px;
   cursor: pointer;
   margin-right: 1rem;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transform: translateY(0);
+}
+
+.back-button:hover {
+  background-color: var(--background-lighter);
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }

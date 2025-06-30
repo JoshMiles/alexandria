@@ -59,12 +59,31 @@
   gap: 1rem;
   position: relative;
   overflow: hidden;
-  transition: all 0.2s ease-in-out;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transform: translateY(0);
+}
+
+.download-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, transparent 0%, rgba(138, 43, 226, 0.03) 100%);
+  opacity: 0;
+  transition: opacity 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  pointer-events: none;
+}
+
+.download-card:hover::before {
+  opacity: 1;
 }
 
 .download-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0,0,0,0.1), 0 0 12px rgba(138, 43, 226, 0.05);
+  border-color: var(--accent);
 }
 
 .download-card-top {
@@ -177,9 +196,27 @@
 
 .progress-bar-determinate {
   height: 100%;
-  background-color: var(--accent);
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-hover) 100%);
   border-radius: 4px;
-  transition: width 0.1s linear;
+  transition: width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-bar-determinate::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: progressShimmer 2s infinite;
+}
+
+@keyframes progressShimmer {
+  0% { left: -100%; }
+  100% { left: 100%; }
 }
 
 .progress-indeterminate .progress-bar {

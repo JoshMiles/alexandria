@@ -4,6 +4,7 @@ import { FiSearch, FiSettings } from 'react-icons/fi';
 import { Book } from './types';
 import { DownloadProvider, useDownloads } from './contexts/DownloadContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { I18nProvider, useI18n } from './contexts/I18nContext';
 import { useSearch } from './hooks/useSearch';
 import Sidebar from './components/Sidebar';
 import ResultsGrid from './components/ResultsGrid';
@@ -16,34 +17,63 @@ import './styles.css';
 import { v4 as uuidv4 } from 'uuid';
 
 const App: React.FC = () => (
-  <DownloadProvider>
-    <ThemeProvider>
-      <div className="app-container">
-        {window.electron.platform !== 'darwin' && <TitleBar />}
-        <div className="content-wrapper">
-          <AppContent />
+  <I18nProvider>
+    <DownloadProvider>
+      <ThemeProvider>
+        <div className="app-container">
+          {window.electron.platform !== 'darwin' && <TitleBar />}
+          <div className="content-wrapper">
+            <AppContent />
+          </div>
+          <NotificationPortal />
         </div>
-        <NotificationPortal />
-      </div>
-    </ThemeProvider>
-  </DownloadProvider>
+      </ThemeProvider>
+    </DownloadProvider>
+  </I18nProvider>
 );
 
 const NOTIFICATION_DISPLAY_TIME = 2500; // ms
 
+const SettingsButtonOverlay: React.FC<{ width: number, onClick: () => void }> = ({ width, onClick }) => {
+  const { t } = useI18n();
+  return (
+    <button
+      className="settings-button settings-button-overlay"
+      style={{
+        position: 'fixed',
+        left: 0,
+        bottom: 0,
+        width: width,
+        zIndex: 1000,
+        borderTopLeftRadius: 0,
+        borderTopRightRadius: 0,
+        borderBottomLeftRadius: '0.75rem',
+        borderBottomRightRadius: '0.75rem',
+      }}
+      onClick={onClick}
+    >
+      <FiSettings />
+      <span>{t('app.settings')}</span>
+    </button>
+  );
+};
+
 const AppContent = () => {
   const { libgenUrl } = useTheme();
+  const { t } = useI18n();
   const { downloads, handleDownload, handleCancelDownload, handleOpenFile, handleOpenFolder, handleClearDownloads } = useDownloads();
   
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [randomFact, setRandomFact] = useState('');
   const [randomFactAuthor, setRandomFactAuthor] = useState('');
-  const [showAllFiles, setShowAllFiles] = useState(true);
+  const [showAllFiles, setShowAllFiles] = useState(false);
   const [searchStatus, setSearchStatus] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [sidebarWidth, setSidebarWidth] = useState(350);
+  const sidebarResizableRef = useRef<any>(null);
 
   const handleToggleSettings = useCallback(() => {
     setShowSettings(prev => !prev);
@@ -88,7 +118,7 @@ const AppContent = () => {
     setSearchStatus('');
     
     setIsSearching(true);
-    setSearchStatus('Searching...');
+    setSearchStatus(t('app.searching'));
     
     try {
       await searchImmediate(query);
@@ -111,7 +141,7 @@ const AppContent = () => {
 
   // Filter results based on showAllFiles
   const filteredResults = useMemo(() => {
-    return showAllFiles ? unfilteredResults : unfilteredResults.filter(book => book.isbn);
+    return showAllFiles ? unfilteredResults : unfilteredResults.filter(book => book.isbn || book.asin);
   }, [showAllFiles, unfilteredResults]);
 
   // Add client IDs to results
@@ -183,12 +213,34 @@ const AppContent = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const updateWidth = () => {
+      const el = document.querySelector('.sidebar-resizable') as HTMLDivElement;
+      if (el) {
+        setSidebarWidth(el.offsetWidth);
+        sidebarResizableRef.current = el;
+      }
+    };
+    updateWidth();
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, []);
+
+  useEffect(() => {
+    const el = document.querySelector('.sidebar-resizable') as HTMLDivElement;
+    if (!el) return;
+    const observer = new ResizeObserver(() => {
+      setSidebarWidth(el.offsetWidth);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   const showWelcomeMessage = !loading && !error && !noResults && resultsWithIds.length === 0 && !doiResult;
 
   return (
     <>
       <div className="left-panel">
-        <Header onLogoClick={handleLogoClick} />
         <Sidebar
           downloads={downloads}
           onClear={handleClearDownloads}
@@ -196,9 +248,11 @@ const AppContent = () => {
           onOpenFile={handleOpenFile}
           onOpenFolder={handleOpenFolder}
           onSettingsClick={handleToggleSettings}
+          onLogoClick={handleLogoClick}
         />
+        <SettingsButtonOverlay width={sidebarWidth} onClick={handleToggleSettings} />
       </div>
-              <div className="main-content">
+      <div className="main-content">
         <div className="main-view">
           <AnimatePresence mode="wait">
             <motion.div
@@ -249,7 +303,7 @@ const AppContent = () => {
                   <button className="back-button" onClick={handleBack}>
                     Back
                   </button>
-                  <h2>Search Results</h2>
+                  <h2>{t('app.searchResults')}</h2>
                   {!isDoiSearch && (
                     <div className="toggle-container">
                       <label className="toggle-switch">
@@ -260,7 +314,7 @@ const AppContent = () => {
                         />
                         <span className="slider"></span>
                       </label>
-                      <span>Show all files</span>
+                                              <span>{t('app.showAllFiles')}</span>
                     </div>
                   )}
                 </div>

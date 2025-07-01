@@ -6,7 +6,8 @@ import { SocksProxyAgent } from 'socks-proxy-agent';
 
 // Constants
 const API_URLS = {
-  LIBGEN: "https://libgen.li",
+  LIBGEN: "https://libgen.is",
+  LIBGEN_FICTION: "https://libgen.is/fiction",
   GOOGLE_BOOKS: "https://www.googleapis.com/books/v1/volumes",
   CROSSREF: "https://api.crossref.org/works",
   SCIHUB: "https://sci-hub.box",
@@ -27,6 +28,7 @@ interface Book {
     cover_url?: string;
     mirror_links?: string[];
     isbn?: string;
+    asin?: string;
     description?: string;
     publishedDate?: string;
     categories?: string[];
@@ -43,6 +45,13 @@ const LIBGEN_MIRRORS = [
     'https://libgen.la',
     'https://libgen.bz',
     'https://libgen.gl',
+];
+
+// Add a list of LibGen fiction mirrors
+const LIBGEN_FICTION_MIRRORS = [
+    'https://libgen.is',
+    'https://libgen.rs',
+    'https://libgen.st',
 ];
 
 // Performance optimizations: Caching and connection pooling
@@ -106,6 +115,37 @@ const setCachedData = (key: string, data: any, ttl: number = CACHE_TTL) => {
       }
     }
   }
+};
+
+// Cover image cache
+const coverCache = new Map<string, string>();
+
+/**
+ * Fetches the cover image URL from the /fiction/[md5] page
+ */
+const fetchFictionCoverUrl = async (md5: string, logger: typeof log): Promise<string | null> => {
+    if (coverCache.has(md5)) {
+        return coverCache.get(md5)!;
+    }
+    try {
+        const url = `${API_URLS.LIBGEN_FICTION}/${md5}`;
+        const html = await httpGet(url, 'text', logger, 2, true);
+        const $ = cheerio.load(html);
+        // Find the image with src containing 'fictioncovers'
+        const img = $('img[src*="fictioncovers"]');
+        if (img.length > 0) {
+            let src = img.attr('src');
+            if (src && !src.startsWith('http')) {
+                // Make absolute
+                src = `${API_URLS.LIBGEN}${src}`;
+            }
+            coverCache.set(md5, src!);
+            return src!;
+        }
+    } catch (error) {
+        logger.warn(`Could not fetch cover for md5 ${md5}:`, error);
+    }
+    return null;
 };
 
 /**
@@ -178,7 +218,21 @@ const getGoogleBookInfo = async (isbn: string, logger: typeof log) => {
         const data = await httpGet(url, 'json', logger, 2, true);
         if (data.totalItems > 0) {
             const volumeInfo = data.items[0].volumeInfo;
+            const saleInfo = data.items[0].saleInfo;
             logger.info(`Found Google Books info for ISBN: ${isbn}`);
+            
+            // Extract ASIN from industry identifiers
+            let asin = null;
+            if (volumeInfo.industryIdentifiers) {
+                const asinIdentifier = volumeInfo.industryIdentifiers.find(
+                    (id: any) => id.type === 'ASIN'
+                );
+                if (asinIdentifier) {
+                    asin = asinIdentifier.identifier;
+                    logger.info(`Extracted ASIN: ${asin} for ISBN: ${isbn}`);
+                }
+            }
+            
             return {
                 authors: volumeInfo.authors || [],
                 description: volumeInfo.description,
@@ -188,6 +242,7 @@ const getGoogleBookInfo = async (isbn: string, logger: typeof log) => {
                 categories: volumeInfo.categories || [],
                 averageRating: volumeInfo.averageRating,
                 thumbnail: volumeInfo.imageLinks?.thumbnail,
+                asin: asin,
             };
         }
         logger.warn(`No Google Books info found for ISBN: ${isbn}`);
@@ -219,33 +274,104 @@ const parseInitialSearchResults = (html: string, logger: typeof log): Book[] => 
     logger.info('Parsing initial search results from HTML.');
     const $ = cheerio.load(html);
     const results: Book[] = [];
-    const tables = $('table');
-    if (tables.length < 2) {
-        logger.warn('Could not find the results table in the HTML.');
+    
+    // Find the main results table with class "catalog"
+    const table = $('table.catalog');
+    if (!table.length) {
+        logger.warn('Could not find table with class "catalog" in the HTML.');
         return results;
     }
-
-    tables.eq(1).find('tr').slice(1).each((i, row) => {
+    
+    // Parse each row in the table body
+    const rows = table.find('tbody tr');
+    logger.info(`Found ${rows.length} data rows in catalog table`);
+    
+    rows.each((i, row) => {
         const cols = $(row).find('td');
-        if (cols.length < 10) return;
+        
+        if (cols.length < 7) {
+            return; // Skip rows with insufficient columns
+        }
 
-        const editLink = cols.eq(0).find('a[href*="edition.php"]');
-        const bookIdMatch = editLink.attr('href')?.match(/id=(\d+)/);
-        if (!bookIdMatch) return;
+        try {
+            // Column 0: Authors (ul.catalog_authors)
+            const authorsList = cols.eq(0).find('ul.catalog_authors li a');
+            const authors = authorsList.map((j, author) => $(author).text().trim()).get();
+            const author = authors.join(', ');
+            
+            // Column 1: Series
+            const series = cols.eq(1).text().trim();
+            
+            // Column 2: Title (with fiction link)
+            const titleElement = cols.eq(2).find('p a[href*="/fiction/"]');
+            const title = titleElement.text().trim();
+            
+            // Extract MD5 ID from fiction link
+            const fictionLink = titleElement.attr('href');
+            if (!fictionLink) {
+                return;
+            }
+            
+            const md5Match = fictionLink.match(/\/fiction\/([A-F0-9]+)/);
+            if (!md5Match) {
+                return;
+            }
+            
+            const md5Id = md5Match[1];
+            
+            // Extract ISBN from catalog_identifier
+            const isbnElement = cols.eq(2).find('p.catalog_identifier');
+            let isbn = '';
+            if (isbnElement.length > 0) {
+                const isbnText = isbnElement.text();
+                const isbnMatch = isbnText.match(/ISBN:\s*([0-9,\-\s]+)/);
+                if (isbnMatch) {
+                    isbn = isbnMatch[1].split(',')[0].trim(); // Take first ISBN
+                }
+            }
+            
+            // Column 3: Language
+            const language = cols.eq(3).text().trim();
+            
+            // Column 4: File (format and size)
+            const fileText = cols.eq(4).text().trim();
+            const fileMatch = fileText.match(/(\w+)\s*\/\s*([0-9.]+)\s*(\w+)/);
+            const extension = fileMatch ? fileMatch[1].toLowerCase() : 'unknown';
+            const size = fileMatch ? `${fileMatch[2]} ${fileMatch[3]}` : fileText;
+            
+            // Column 5: Mirrors (ul.record_mirrors_compact)
+            const downloadLinks: string[] = [];
+            cols.eq(5).find('ul.record_mirrors_compact li a').each((j, link) => {
+                const href = $(link).attr('href');
+                if (href) {
+                    downloadLinks.push(href);
+                }
+            });
 
-        results.push({
-            id: bookIdMatch[1],
-            author: cols.eq(1).text().trim(), // Store table author directly
-            publisher: cols.eq(3).text().trim(),
-            year: cols.eq(4).text().trim(),
-            language: cols.eq(5).text().trim(),
-            pages: cols.eq(6).text().trim(),
-            size: cols.eq(7).text().trim(),
-            extension: cols.eq(8).text().trim(),
-            cover_url: cols.eq(0).find('img').attr('src') || '',
-            mirror_links: cols.eq(9).find('a').map((i, a) => $(a).attr('href')).get(),
-        });
+            // Create book object
+            const book: Book = {
+                id: md5Id,
+                title: title || 'Unknown Title',
+                author: author || 'Unknown Author',
+                language: language || 'Unknown',
+                extension: extension,
+                size: size,
+                isbn: isbn,
+                cover_url: `/fiction/${md5Id}`,
+                mirror_links: downloadLinks,
+                publisher: '',
+                year: '',
+                pages: '',
+            };
+            // Set initial cover URL (will be updated if found)
+            book.thumbnail = `https://libgen.is/covers/fictioncovers/${md5Id}.jpg`;
+            results.push(book);
+            
+        } catch (error) {
+            logger.error(`Error parsing row ${i}:`, error);
+        }
     });
+    
     logger.info(`Parsed ${results.length} initial search results.`);
     return results;
 };
@@ -293,55 +419,93 @@ const searchByDoi = async (win: BrowserWindow, doi: string, logger: typeof log):
     }
 }
 
+// Function to fetch metadata from individual book pages
+const fetchBookMetadata = async (book: Book, logger: typeof log): Promise<Book> => {
+    try {
+        const url = `${API_URLS.LIBGEN_FICTION}/${book.id}`;
+        const html = await httpGet(url, 'text', logger, 2, true);
+        const $ = cheerio.load(html);
+        
+        // Extract title from the book info table
+        const titleCell = $('td:contains("Title")').next();
+        if (titleCell.length > 0) {
+            book.title = titleCell.text().trim();
+        } else {
+            // Fallback: use <h1> only if it's not the site header
+            const h1 = $('h1');
+            if (h1.length > 0) {
+                const h1Text = h1.text().trim();
+                if (h1Text && h1Text !== 'Library Genesis: Fiction') {
+                    book.title = h1Text;
+                }
+            }
+        }
+        
+        // Extract author information
+        const authorElement = $('a[href*="/fiction/?q=author:"]');
+        if (authorElement.length > 0) {
+            book.author = authorElement.text().trim();
+        }
+        
+        // Extract publisher information
+        const publisherElement = $('td:contains("Publisher")').next();
+        if (publisherElement.length > 0) {
+            book.publisher = publisherElement.text().trim();
+        }
+        
+        // Extract year information
+        const yearElement = $('td:contains("Year")').next();
+        if (yearElement.length > 0) {
+            book.year = yearElement.text().trim();
+        }
+        
+        // Extract pages information
+        const pagesElement = $('td:contains("Pages")').next();
+        if (pagesElement.length > 0) {
+            book.pages = pagesElement.text().trim();
+        }
+        
+        // Extract description
+        const descriptionElement = $('.description');
+        if (descriptionElement.length > 0) {
+            book.description = descriptionElement.text().trim();
+        }
+        
+        // Try to fetch Google Books info if we have an ISBN
+        if (book.isbn) {
+            const googleInfo = await getGoogleBookInfo(book.isbn, logger);
+            if (googleInfo) {
+                book.description = googleInfo.description || book.description;
+                book.pages = googleInfo.pages || book.pages;
+                book.publisher = googleInfo.publisher || book.publisher;
+                book.publishedDate = googleInfo.publishedDate;
+                book.categories = googleInfo.categories;
+                book.averageRating = googleInfo.averageRating;
+                book.thumbnail = googleInfo.thumbnail || book.thumbnail;
+                book.asin = googleInfo.asin;
+            }
+        }
+        
+        logger.info(`Fetched metadata for book: ${book.title}`);
+    } catch (error) {
+        logger.warn(`Failed to fetch metadata for book ${book.id}:`, error);
+    }
+    
+    return book;
+};
+
 // Optimized merge function with parallel processing
-const mergeBookData = async (initialResults: Book[], metadata: any, logger: typeof log): Promise<Book[]> => {
+const mergeBookData = async (initialResults: Book[], logger: typeof log): Promise<Book[]> => {
     logger.info('Merging book data with metadata and Google Books info.');
     
     // Process books in parallel batches to avoid overwhelming APIs
-    const batchSize = 5;
+    const batchSize = 3; // Reduced batch size to avoid overwhelming the server
     const finalResults: Book[] = [];
     
     for (let i = 0; i < initialResults.length; i += batchSize) {
         const batch = initialResults.slice(i, i + batchSize);
         const batchPromises = batch.map(async (book) => {
-            const meta = metadata[book.id];
-            if (meta) {
-                book.title = meta.title || 'Unknown Title';
-                const isbn = extractIsbnFromMeta(meta, logger);
-                book.isbn = isbn;
-
-                // Only fetch Google Books info if we have an ISBN
-                let googleInfo = null;
-                if (isbn) {
-                    googleInfo = await getGoogleBookInfo(isbn, logger);
-                }
-
-                // Robust author parsing
-                let author = '';
-                if (googleInfo?.authors?.length) {
-                    author = googleInfo.authors.join(', ');
-                } else if (Array.isArray(meta.author) && meta.author.length > 0) {
-                    author = meta.author.join(', ');
-                } else if (typeof meta.author === 'string') {
-                    author = meta.author;
-                } else if (book.author) {
-                    author = book.author;
-                } else {
-                    author = 'Unknown Author';
-                }
-                book.author = author;
-
-                if (googleInfo) {
-                    book.description = googleInfo.description;
-                    book.pages = googleInfo.pages || book.pages;
-                    book.publisher = googleInfo.publisher || book.publisher;
-                    book.publishedDate = googleInfo.publishedDate;
-                    book.categories = googleInfo.categories;
-                    book.averageRating = googleInfo.averageRating;
-                    book.thumbnail = googleInfo.thumbnail;
-                }
-            }
-            return book;
+            return await fetchBookMetadata(book, logger);
         });
         
         const batchResults = await Promise.all(batchPromises);
@@ -362,54 +526,45 @@ export const search = async (win: BrowserWindow, query: string, logger: typeof l
 
     logger.info(`Searching for '${query}'...`);
     const encodedQuery = query.replace(/ /g, '+');
+    
+    // Use LibGenAccessManager for fiction search
+    const searchPath = `/fiction/?q=${encodedQuery}`;
     let html = null;
-    let usedDomain = null;
-    let lastError = null;
-
-    // Use LibGenAccessManager for search
-    const searchPath = `/index.php?req=${encodedQuery}&columns%5B%5D=t&columns%5B%5D=a&columns%5B%5D=s&columns%5B%5D=y&columns%5B%5D=p&columns%5B%5D=i&objects%5B%5D=f&objects%5B%5D=e&objects%5B%5D=s&objects%5B%5D=a&objects%5B%5D=p&objects%5B%5D=w&topics%5B%5D=l&topics%5B%5D=f&res=100&covers=on&filesuns=all`;
+    
     try {
-        sendStatusUpdate(win, 'Connecting to LibGen...', logger);
+        sendStatusUpdate(win, 'Connecting to LibGen Fiction...', logger);
         html = await libgenAccessManager.get(searchPath, 'text', logger);
         const currentMethod = libgenAccessManager.getCurrentMethod();
-        sendStatusUpdate(win, `Successfully connected to ${currentMethod?.mirror || 'LibGen'}`, logger);
+        sendStatusUpdate(win, `Successfully connected to ${currentMethod?.mirror || 'LibGen Fiction'}`, logger);
     } catch (error) {
-        lastError = libgenAccessManager.getLastError() || (error as any)?.message || String(error);
-        logger.error(`All mirrors and proxies failed for search:`, lastError);
-        sendStatusUpdate(win, `All mirrors and proxy failed. Cannot reach LibGen. Error: ${lastError}`, logger);
+        const lastError = libgenAccessManager.getLastError() || (error as any)?.message || String(error);
+        logger.error(`All fiction mirrors failed for search:`, lastError);
+        sendStatusUpdate(win, `All fiction mirrors failed. Cannot reach LibGen Fiction. Error: ${lastError}`, logger);
         return [];
     }
 
     sendStatusUpdate(win, 'Parsing search results...', logger);
     const initialResults = parseInitialSearchResults(html, logger);
     if (initialResults.length === 0) {
-        logger.warn(`No initial results for query: '${query}'`);
+        logger.warn(`No results for query: '${query}'`);
+        sendStatusUpdate(win, `No results found for "${query}"`, logger);
         return [];
     }
 
+    // Sort results: English first, then others
     const englishBooks = initialResults.filter(book => book.language?.toLowerCase() === 'english');
     const otherBooks = initialResults.filter(book => book.language?.toLowerCase() !== 'english');
-    const sortedResults = [...englishBooks, ...otherBooks];
+    const sortedInitialResults = [...englishBooks, ...otherBooks];
 
-    const ids = sortedResults.map(book => book.id);
-    // Use LibGenAccessManager for metadata
-    const metadataPath = `/json.php?object=e&addkeys=*&ids=${ids.join(',')}`;
-    let metadata;
-    try {
-        sendStatusUpdate(win, 'Fetching book metadata...', logger);
-        metadata = await libgenAccessManager.get(metadataPath, 'json', logger);
-    } catch (error) {
-        lastError = libgenAccessManager.getLastError() || (error as any)?.message || String(error);
-        logger.error(`Failed to fetch metadata:`, lastError);
-        sendStatusUpdate(win, `Failed to fetch metadata. Error: ${lastError}`, logger);
-        return [];
-    }
-
+    // Fetch metadata and enrich with Google Books data
+    sendStatusUpdate(win, 'Fetching book metadata...', logger);
+    const enrichedResults = await mergeBookData(sortedInitialResults, logger);
+    
     sendStatusUpdate(win, 'Enriching data with Google Books...', logger);
-    const finalResults = await mergeBookData(sortedResults, metadata, logger);
-    logger.info(`Search for '${query}' completed, returning ${finalResults.length} results.`);
-    sendStatusUpdate(win, `Found ${finalResults.length} results for "${query}"`, logger);
-    return finalResults;
+
+    logger.info(`Search for '${query}' completed, returning ${enrichedResults.length} results.`);
+    sendStatusUpdate(win, `Found ${enrichedResults.length} results for "${query}"`, logger);
+    return enrichedResults;
 };
 
 /**
@@ -429,9 +584,51 @@ export const search = async (win: BrowserWindow, query: string, logger: typeof l
 export const getDownloadLinks = async (downloadPageUrl: string, logger: typeof log): Promise<string[]> => {
     logger.info(`Getting download links from page: ${downloadPageUrl}`);
     try {
+        // Special handling for libgen.li ads.php links
+        if (downloadPageUrl.includes('libgen.li/ads.php?md5=')) {
+            logger.info('Resolving libgen.li ads.php link for direct download...');
+            const html = await httpGet(downloadPageUrl, 'text', logger, 2, false);
+            const $ = cheerio.load(html);
+            // Find the get.php link with &key
+            const getLink = $('a[href*="get.php"][href*="key="]').attr('href');
+            if (getLink) {
+                const base = 'https://libgen.li';
+                logger.info(`Resolved direct get.php link: ${base}${getLink}`);
+                return [`${base}${getLink}`];
+            }
+            logger.warn('No get.php link with key found on ads.php page.');
+            return [];
+        }
+        
+        // For fiction books, prioritize the second mirror link (libgen.li ads.php)
+        if (downloadPageUrl.includes('fiction/') || downloadPageUrl.includes('books.ms')) {
+            // Extract the MD5 from the URL
+            const md5Match = downloadPageUrl.match(/([A-F0-9]{32})/i);
+            if (md5Match) {
+                const md5 = md5Match[1];
+                // Construct the libgen.li ads.php URL
+                const libgenLiUrl = `https://libgen.li/ads.php?md5=${md5}`;
+                logger.info(`Trying libgen.li ads.php link: ${libgenLiUrl}`);
+                
+                try {
+                    const html = await httpGet(libgenLiUrl, 'text', logger, 2, false);
+                    const $ = cheerio.load(html);
+                                const getLink = $('a[href*="get.php"][href*="key="]').attr('href');
+            if (getLink) {
+                const base = 'https://libgen.li';
+                const fullUrl = getLink.startsWith('http') ? getLink : `${base}/${getLink}`;
+                logger.info(`Found get.php link from libgen.li: ${fullUrl}`);
+                return [fullUrl];
+            }
+                } catch (error) {
+                    logger.warn(`Failed to fetch libgen.li ads.php page: ${error}`);
+                }
+            }
+        }
+        
         // Use LibGenAccessManager for download page
         let html;
-        if (downloadPageUrl.startsWith('http') && downloadPageUrl.includes('libgen')) {
+        if (downloadPageUrl.startsWith('http') && (downloadPageUrl.includes('libgen.is') || downloadPageUrl.includes('libgen.rs') || downloadPageUrl.includes('libgen.st'))) {
             const url = new URL(downloadPageUrl);
             html = await libgenAccessManager.get(url.pathname + url.search, 'text', logger);
         } else {
@@ -450,6 +647,7 @@ export const getDownloadLinks = async (downloadPageUrl: string, logger: typeof l
             return [];
         }
 
+        // For fiction pages, look for direct download links
         const directLink = $('a[href*="get.php"]').attr('href');
         if (directLink) {
             logger.info(`Found LibGen direct link: ${directLink}`);
@@ -457,6 +655,24 @@ export const getDownloadLinks = async (downloadPageUrl: string, logger: typeof l
             const baseUrl = currentMethod?.mirror || API_URLS.LIBGEN;
             return [`${baseUrl}/${directLink}`];
         }
+        
+        // Also check for other download patterns
+        const downloadLinks: string[] = [];
+        $('a[href*="download"], a[href*="get.php"], a[href*="dl.php"]').each((i, link) => {
+            const href = $(link).attr('href');
+            if (href) {
+                const currentMethod = libgenAccessManager.getCurrentMethod();
+                const baseUrl = currentMethod?.mirror || API_URLS.LIBGEN;
+                const fullUrl = href.startsWith('http') ? href : `${baseUrl}${href}`;
+                downloadLinks.push(fullUrl);
+            }
+        });
+        
+        if (downloadLinks.length > 0) {
+            logger.info(`Found ${downloadLinks.length} download links`);
+            return downloadLinks;
+        }
+        
         logger.warn(`No LibGen direct link found on ${downloadPageUrl}`);
         return [];
     } catch (error) {
@@ -497,6 +713,53 @@ export const getSciHubDownloadLink = async (doi: string, logger: typeof log): Pr
 export const resolveDirectDownloadLink = async (directLink: string, logger: typeof log): Promise<string> => {
     logger.info(`Resolving direct download link: ${directLink}`);
     try {
+        // Special handling for libgen.li ads.php links
+        if (directLink.includes('libgen.li/ads.php?md5=')) {
+            logger.info('Resolving libgen.li ads.php link for direct download...');
+            const html = await httpGet(directLink, 'text', logger, 2, false);
+            const $ = cheerio.load(html);
+            const getLink = $('a[href*="get.php"][href*="key="]').attr('href');
+            if (getLink) {
+                const base = 'https://libgen.li';
+                const fullUrl = getLink.startsWith('http') ? getLink : `${base}/${getLink}`;
+                logger.info(`Resolved direct get.php link: ${fullUrl}`);
+                return fullUrl;
+            }
+            logger.warn('No get.php link with key found on ads.php page.');
+            return directLink;
+        }
+        
+        // For fiction downloads, try libgen.li ads.php first
+        if (directLink.includes('fiction/') || directLink.includes('books.ms')) {
+            // Extract the MD5 from the URL
+            const md5Match = directLink.match(/([A-F0-9]{32})/i);
+            if (md5Match) {
+                const md5 = md5Match[1];
+                // Try libgen.li ads.php first
+                const libgenLiUrl = `https://libgen.li/ads.php?md5=${md5}`;
+                logger.info(`Trying libgen.li ads.php for fiction download: ${libgenLiUrl}`);
+                
+                try {
+                    const html = await httpGet(libgenLiUrl, 'text', logger, 2, false);
+                    const $ = cheerio.load(html);
+                    const getLink = $('a[href*="get.php"][href*="key="]').attr('href');
+                    if (getLink) {
+                        const base = 'https://libgen.li';
+                        const fullUrl = getLink.startsWith('http') ? getLink : `${base}/${getLink}`;
+                        logger.info(`Found get.php link from libgen.li: ${fullUrl}`);
+                        return fullUrl;
+                    }
+                } catch (error) {
+                    logger.warn(`Failed to fetch libgen.li ads.php page: ${error}`);
+                }
+                
+                // Fallback to libgen.is fiction page
+                const libgenIsUrl = `https://libgen.is/fiction/${md5}`;
+                logger.info(`Fallback to libgen.is fiction page: ${libgenIsUrl}`);
+                return libgenIsUrl;
+            }
+        }
+        
         let html;
         if (directLink.startsWith('http') && directLink.includes('libgen')) {
             const url = new URL(directLink);
@@ -508,8 +771,8 @@ export const resolveDirectDownloadLink = async (directLink: string, logger: type
         const $ = cheerio.load(html);
         const finalLink = $('a[href*="get.php"]').attr('href');
         if (finalLink) {
-            const currentMethod = libgenAccessManager.getCurrentMethod();
-            const baseUrl = currentMethod?.mirror || API_URLS.LIBGEN;
+            // Always use libgen.is for final downloads
+            const baseUrl = 'https://libgen.is';
             const fullFinalLink = finalLink.startsWith('http') ? finalLink : `${baseUrl}/${finalLink}`;
             logger.info(`Resolved to final LibGen link: ${fullFinalLink}`);
             return fullFinalLink;
@@ -530,7 +793,7 @@ class LibGenAccessManager {
   lastError: string | null;
 
   constructor() {
-    this.mirrors = [...LIBGEN_MIRRORS];
+    this.mirrors = [...LIBGEN_FICTION_MIRRORS];
     this.lastSuccessful = { mirror: null };
     this.lastError = null;
   }
@@ -634,37 +897,37 @@ export async function getLibgenAccessInfo() {
 
 // New function to test LibGen access with detailed status updates
 export async function testLibgenAccess(win: BrowserWindow, logger: typeof log): Promise<{ success: boolean; workingMirror: string | null; error: string | null }> {
-  logger.info('Starting LibGen access test...');
+  logger.info('Starting LibGen Fiction access test...');
   
-  // Test the main domain first
-  sendStatusUpdate(win, 'Testing main LibGen domain...', logger);
+  // Test the main fiction domain first
+  sendStatusUpdate(win, 'Testing main LibGen Fiction domain...', logger);
   try {
-    const response = await axios.get(`${API_URLS.LIBGEN}/index.php`, {
+    const response = await axios.get(`${API_URLS.LIBGEN_FICTION}/?q=test`, {
       timeout: 10000,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
       }
     });
     if (response.status === 200) {
-      logger.info('Main LibGen domain is accessible');
-      sendStatusUpdate(win, 'Main LibGen domain is working!', logger);
-      libgenAccessManager.lastSuccessful = { mirror: API_URLS.LIBGEN };
+      logger.info('Main LibGen Fiction domain is accessible');
+      sendStatusUpdate(win, 'Main LibGen Fiction domain is working!', logger);
+      libgenAccessManager.lastSuccessful = { mirror: API_URLS.LIBGEN_FICTION };
       libgenAccessManager.lastError = null;
-      return { success: true, workingMirror: API_URLS.LIBGEN, error: null };
+      return { success: true, workingMirror: API_URLS.LIBGEN_FICTION, error: null };
     }
   } catch (error) {
-    logger.warn('Main LibGen domain is not accessible, trying mirrors...');
+    logger.warn('Main LibGen Fiction domain is not accessible, trying mirrors...');
     sendStatusUpdate(win, 'Main domain unavailable, testing mirrors...', logger);
   }
 
-  // Test each mirror
+  // Test each fiction mirror
   const mirrors = libgenAccessManager.mirrors;
   for (let i = 0; i < mirrors.length; i++) {
     const mirror = mirrors[i];
     sendStatusUpdate(win, `Testing mirror ${i + 1}/${mirrors.length}: ${new URL(mirror).hostname}`, logger);
     
     try {
-      const response = await axios.get(`${mirror}/index.php`, {
+      const response = await axios.get(`${mirror}/fiction/?q=test`, {
         timeout: 10000,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -686,7 +949,7 @@ export async function testLibgenAccess(win: BrowserWindow, logger: typeof log): 
   }
 
   // All mirrors failed
-  const errorMsg = 'All LibGen mirrors are currently unavailable';
+  const errorMsg = 'All LibGen Fiction mirrors are currently unavailable';
   logger.error(errorMsg);
   sendStatusUpdate(win, errorMsg, logger);
   libgenAccessManager.lastSuccessful = { mirror: null };

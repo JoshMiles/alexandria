@@ -1,5 +1,6 @@
 export const API_URLS = {
-  LIBGEN: 'https://libgen.li',
+  LIBGEN: 'https://libgen.is',
+  LIBGEN_FICTION: 'https://libgen.is/fiction',
   GOOGLE_BOOKS: 'https://www.googleapis.com/books/v1/volumes',
   CROSSREF: 'https://api.crossref.org/works',
   SCIHUB: 'https://sci-hub.box',

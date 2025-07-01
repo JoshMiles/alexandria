@@ -13,6 +13,7 @@ export interface Book {
   mirror_links: string[];
   description?: string;
   isbn?: string;
+  asin?: string;
   publishedDate?: string;
   categories?: string[];
   averageRating?: number;

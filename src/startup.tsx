@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import { I18nProvider, useI18n } from './contexts/I18nContext';
 import './startup.css';
 
 const parseProgress = (msg: string): number | null => {
@@ -24,8 +25,9 @@ const parseLibGenProgress = (msg: string): number | null => {
   return null;
 };
 
-const Startup = () => {
-  const [message, setMessage] = useState('Checking for updates...');
+const StartupContent = () => {
+  const { t } = useI18n();
+  const [message, setMessage] = useState(t('app.loading'));
   const [progress, setProgress] = useState<number | null>(null);
 
   useEffect(() => {
@@ -52,7 +54,7 @@ const Startup = () => {
   return (
     <div className="startup-bg">
       <div className="startup-card">
-        <div className="startup-logo">Alexandria</div>
+        <div className="startup-logo">{t('app.name')}</div>
         <div className="startup-progress-bar-wrapper">
           {progress !== null ? (
             <div className="startup-progress-bar">
@@ -72,6 +74,12 @@ const Startup = () => {
     </div>
   );
 };
+
+const Startup = () => (
+  <I18nProvider>
+    <StartupContent />
+  </I18nProvider>
+);
 
 const container = document.getElementById('root');
 if (container) {

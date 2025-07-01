@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
+import { useI18n } from '../contexts/I18nContext';
 import './Settings.css';
 import { FiGlobe, FiPlus, FiX, FiZap } from 'react-icons/fi';
 
@@ -23,6 +24,8 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
     setDownloadLocation,
     resetToDefaults,
   } = useTheme();
+  
+  const { t, language, setLanguage, availableLanguages } = useI18n();
 
   const [version, setVersion] = useState('');
   const [libgenAccessInfo, setLibgenAccessInfo] = useState<{ mirrors: string[]; proxies: string[]; currentMethod: { proxy: string | null; mirror: string | null } | null; lastError: string | null } | null>(null);
@@ -105,12 +108,12 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
     <div className="settings-page">
       <div className="settings-header">
         <button className="back-button" onClick={onClose}>
-          Back
+          {t('app.back')}
         </button>
-        <h1>Settings</h1>
+        <h1>{t('settings.title')}</h1>
       </div>
       <div className="setting-section">
-        <h2>Theme</h2>
+        <h2>{t('settings.theme')}</h2>
         <div className="theme-options">
           <label>
             <input
@@ -120,7 +123,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
               checked={theme === 'dark'}
               onChange={(e) => setTheme(e.target.value)}
             />
-            <div className="theme-preview dark-preview">Dark</div>
+            <div className="theme-preview dark-preview">{t('settings.dark')}</div>
           </label>
           <label>
             <input
@@ -130,15 +133,15 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
               checked={theme === 'light'}
               onChange={(e) => setTheme(e.target.value)}
             />
-            <div className="theme-preview light-preview">Light</div>
+            <div className="theme-preview light-preview">{t('settings.light')}</div>
           </label>
         </div>
       </div>
       <div className="setting-section">
-        <h2>Accent Colors</h2>
+        <h2>{t('settings.accentColors')}</h2>
         <div className="color-picker-container">
           <div className="color-picker">
-            <label htmlFor="light-accent-picker">Light Mode</label>
+            <label htmlFor="light-accent-picker">{t('settings.lightMode')}</label>
             <input
               type="color"
               id="light-accent-picker"
@@ -147,7 +150,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
             />
           </div>
           <div className="color-picker">
-            <label htmlFor="dark-accent-picker">Dark Mode</label>
+            <label htmlFor="dark-accent-picker">{t('settings.darkMode')}</label>
             <input
               type="color"
               id="dark-accent-picker"
@@ -156,7 +159,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
             />
           </div>
           <div className="color-picker">
-            <label htmlFor="download-button-color-picker">Download Button</label>
+            <label htmlFor="download-button-color-picker">{t('settings.downloadButton')}</label>
             <input
               type="color"
               id="download-button-color-picker"
@@ -167,26 +170,47 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
         </div>
       </div>
       <div className="setting-section">
-        <h2>Downloads</h2>
+        <h2>{t('settings.downloads')}</h2>
         <div className="setting-row">
-          <label htmlFor="download-location">Default Download Location</label>
+          <label htmlFor="download-location">{t('settings.defaultDownloadLocation')}</label>
           <button onClick={() => setDownloadLocation()}>
-            {downloadLocation ? downloadLocation : 'Select a folder'}
+            {downloadLocation ? downloadLocation : t('settings.selectFolder')}
           </button>
+        </div>
+      </div>
+      
+      <div className="setting-section">
+        <h2>{t('settings.language')}</h2>
+        <div className="language-options">
+          {Object.entries(availableLanguages).map(([code, lang]) => (
+            <label key={code} className="language-option">
+              <input
+                type="radio"
+                name="language"
+                value={code}
+                checked={language === code}
+                onChange={(e) => setLanguage(e.target.value)}
+              />
+              <div className="language-preview">
+                <span className="language-flag">{lang.flag}</span>
+                <span className="language-name">{lang.name}</span>
+              </div>
+            </label>
+          ))}
         </div>
       </div>
       <div className="setting-section libgen-access-card">
         <div className="libgen-access-header">
-          <FiGlobe /> LibGen Access
+          <FiGlobe /> {t('libgen.access')}
         </div>
         {libgenAccessInfo ? (
           <>
             <div className="libgen-access-status-row">
-              <span><strong>Current Mirror:</strong> <span className="current-method">{libgenAccessInfo.currentMethod && libgenAccessInfo.currentMethod.mirror ? libgenAccessInfo.currentMethod.mirror : 'None (auto-detect)'}</span></span>
-              <span><strong>Last Error:</strong> <span className="last-error">{libgenAccessInfo.lastError || 'None'}</span></span>
+              <span><strong>{t('libgen.currentMirror')}:</strong> <span className="current-method">{libgenAccessInfo.currentMethod && libgenAccessInfo.currentMethod.mirror ? libgenAccessInfo.currentMethod.mirror : t('libgen.autoDetect')}</span></span>
+              <span><strong>{t('libgen.lastError')}:</strong> <span className="last-error">{libgenAccessInfo.lastError || t('libgen.none')}</span></span>
             </div>
             <div className="libgen-access-row">
-              <strong>Mirrors:</strong>
+              <strong>{t('libgen.mirrors')}:</strong>
               {libgenAccessInfo.mirrors.map((mirror) => {
                 const isCurrent = libgenAccessInfo.currentMethod && libgenAccessInfo.currentMethod.mirror === mirror;
                 return (
@@ -195,7 +219,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                     className={'libgen-chip' + (isCurrent ? ' current' : '')}
                   >
                     {mirror}
-                    <button className="remove-btn" title="Remove" onClick={() => handleRemoveMirror(mirror)}><FiX /></button>
+                    <button className="remove-btn" title={t('libgen.remove')} onClick={() => handleRemoveMirror(mirror)}><FiX /></button>
                   </span>
                 );
               })}
@@ -203,33 +227,33 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
             <div className="libgen-access-add-row">
               <input
                 type="text"
-                placeholder="Add new mirror (https://...)"
+                placeholder={t('libgen.addMirrorPlaceholder')}
                 value={newMirror}
                 onChange={(e) => setNewMirror(e.target.value)}
               />
-              <button onClick={handleAddMirror} title="Add Mirror"><FiPlus /></button>
+              <button onClick={handleAddMirror} title={t('libgen.addMirror')}><FiPlus /></button>
             </div>
             <div className="libgen-access-divider" />
             <div className="libgen-access-actions">
               <button className="reset-button" onClick={handleTestAccess} disabled={testingAccess}>
-                {testingAccess ? 'Testing...' : 'Test LibGen Access'}
+                {testingAccess ? t('libgen.testing') : t('libgen.testAccess')}
               </button>
               <button className="reset-button" onClick={handleResetAccess} disabled={resettingAccess}>
-                {resettingAccess ? 'Resetting...' : 'Reset Access Method'}
+                {resettingAccess ? t('libgen.resetting') : t('libgen.resetAccessMethod')}
               </button>
             </div>
           </>
         ) : (
-          <p>Loading LibGen access info...</p>
+          <p>{t('libgen.loadingAccessInfo')}</p>
         )}
       </div>
       <div className="setting-section">
         <button className="reset-button" onClick={resetToDefaults}>
-          Reset to Defaults
+          {t('settings.resetToDefaults')}
         </button>
       </div>
       <div className="setting-section version-info">
-        <p>Version: {version}</p>
+        <p>{t('settings.version')}: {version}</p>
       </div>
     </div>
   );

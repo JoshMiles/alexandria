@@ -5,6 +5,7 @@
   padding: 1rem;
   cursor: pointer;
   -webkit-app-region: drag;
+  flex-shrink: 0;
 }
 
 .mac-header {

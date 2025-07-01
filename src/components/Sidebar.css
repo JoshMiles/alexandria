@@ -1,54 +1,150 @@
+/* Reset and base styles */
 .sidebar-resizable {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  flex-grow: 1;
+  height: 100vh;
+  width: 350px;
+  min-width: 280px;
+  max-width: 600px;
 }
 
 .sidebar {
   display: flex;
   flex-direction: column;
+  height: 100vh;
   background-color: var(--background-light);
   border-right: 1px solid var(--border);
   width: 100%;
-  height: 100%;
+  box-sizing: border-box;
   overflow: hidden;
 }
 
-.sidebar-content {
-  flex: 1 1 auto;
-  overflow-y: auto;
+/* Header section - fixed height */
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   padding: 1rem;
-}
-
-.sidebar-footer {
-  padding: 1rem;
-  border-top: 1px solid var(--border);
   flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
 }
 
-.settings-button {
-  width: 100%;
+.sidebar-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.clear-button {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  padding: 0.8rem 1rem;
-  border-radius: 8px;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
   background-color: var(--background-lighter);
   border: 1px solid var(--border);
   color: var(--foreground);
-  font-size: 1rem;
-  font-weight: 500;
+  font-size: 0.85rem;
   cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.clear-button:hover {
+  background-color: var(--error);
+  border-color: var(--error);
+  color: white;
+}
+
+/* Search section - fixed height */
+.downloads-search {
+  padding: 1rem;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.search-input-container {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.search-input-container .search-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--foreground-dark);
+  font-size: 1rem;
+  z-index: 1;
+}
+
+.downloads-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.6rem 0.75rem 0.6rem 2.5rem;
+  border-radius: 8px;
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  font-size: 0.9rem;
   transition: all 0.2s ease;
 }
 
-.settings-button:hover {
-  background-color: var(--accent);
+.downloads-search-input:focus {
+  outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-glow);
 }
 
+.downloads-search-input::placeholder {
+  color: var(--foreground-dark);
+}
+
+/* Downloads list - scrollable area */
+.downloads-list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 1rem;
+  padding-bottom: 5rem; /* Space for settings button overlay */
+  background: transparent;
+}
+
+/* Scrollbar styling */
+.downloads-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.downloads-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.downloads-list::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 3px;
+}
+
+.downloads-list::-webkit-scrollbar-thumb:hover {
+  background-color: var(--border-light);
+}
+
+/* Empty state styles */
+.no-downloads, .no-downloads-found {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  color: var(--foreground-dark);
+  text-align: center;
+  font-style: italic;
+  min-height: 200px;
+}
+
+.no-downloads p, .no-downloads-found p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+/* Download card styles */
 .download-card {
   background-color: var(--background);
   border-radius: 12px;
@@ -61,6 +157,11 @@
   overflow: hidden;
   transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   transform: translateY(0);
+  margin-bottom: 1rem;
+}
+
+.download-card:last-child {
+  margin-bottom: 0;
 }
 
 .download-card::before {
@@ -117,6 +218,7 @@
   flex-direction: column;
   flex-grow: 1;
   overflow: hidden;
+  min-width: 0;
 }
 
 .download-details .title {
@@ -146,6 +248,7 @@
 .download-chips {
   display: flex;
   gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .download-chips .chip {
@@ -155,6 +258,7 @@
   border-radius: 8px;
   font-size: 0.75rem;
   font-weight: 500;
+  flex-shrink: 0;
 }
 
 .download-status {
@@ -162,6 +266,7 @@
   top: 1rem;
   right: 1rem;
   font-size: 1.2rem;
+  flex-shrink: 0;
 }
 
 .icon.resolving {
@@ -198,38 +303,36 @@
   height: 100%;
   background: linear-gradient(90deg, var(--accent) 0%, var(--accent-hover) 100%);
   border-radius: 4px;
-  transition: width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: width 0.3s ease;
   position: relative;
-  overflow: hidden;
 }
 
 .progress-bar-determinate::after {
   content: '';
   position: absolute;
   top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
   animation: progressShimmer 2s infinite;
 }
 
 @keyframes progressShimmer {
-  0% { left: -100%; }
-  100% { left: 100%; }
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 .progress-indeterminate .progress-bar {
-  width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, var(--accent-glow), transparent);
-  background-size: 200% 100%;
-  animation: indeterminate-scroll 1.5s linear infinite;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-hover) 100%);
+  border-radius: 4px;
+  animation: indeterminate-scroll 1.5s infinite;
 }
 
 @keyframes indeterminate-scroll {
-  from { background-position: 200% 0; }
-  to { background-position: -200% 0; }
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 .progress-text {
@@ -240,75 +343,95 @@
 }
 
 .download-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
+  display: flex;
+  gap: 0.5rem;
 }
 
 .download-actions button, .cancel-download-button {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   padding: 0.6rem 1rem;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 500;
+  border-radius: 6px;
+  background-color: var(--background-lighter);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  font-size: 0.85rem;
   cursor: pointer;
   transition: all 0.2s ease;
-  border: none;
 }
 
 .download-actions button:first-child {
-  background-color: var(--accent);
+  background-color: var(--download-button-color);
+  border-color: var(--download-button-color);
   color: white;
 }
 
 .download-actions button:last-child {
   background-color: var(--background-lighter);
-  color: var(--foreground-dark);
+  border-color: var(--border);
+  color: var(--foreground);
 }
 
 .cancel-download-button {
-  background-color: var(--error);
-  color: white;
+  background-color: var(--error) !important;
+  border-color: var(--error) !important;
+  color: white !important;
+}
+
+/* Settings button styles */
+.settings-button {
   width: 100%;
-}
-
-.sidebar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-}
-
-.sidebar-header h2 {
-  font-size: 1.4rem;
-  font-weight: 600;
-  margin: 0;
-}
-
-.clear-button {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  background: none;
-  border: none;
-  color: var(--foreground-dark);
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.8rem 1rem;
+  border-radius: 8px;
+  background-color: var(--background-lighter);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  font-size: 1rem;
+  font-weight: 500;
   cursor: pointer;
-  font-size: 0.9rem;
+  transition: all 0.2s ease;
 }
 
-.downloads-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+.settings-button:hover {
+  background-color: var(--accent);
+  border-color: var(--accent);
 }
 
+.settings-button-overlay {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  z-index: 1000;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-bottom-left-radius: 0.75rem;
+  border-bottom-right-radius: 0.75rem;
+  margin: 0;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.04);
+  pointer-events: auto;
+}
+
+/* Animations */
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+/* Legacy support */
+.sidebar-main {
+  display: none; /* Hide the old sidebar-main since we restructured */
+}
+
+.left-panel {
+  height: 100vh;
+  min-height: 0;
 }
 
 

@@ -52,6 +52,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
     },
+    backgroundColor: '#121212',
   });
 
   const version = app.getVersion();

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Book } from '../types';
+import { useI18n } from '../contexts/I18nContext';
 import './DoiResult.css';
 import { FiCalendar, FiDownload, FiFileText, FiHash, FiUsers } from 'react-icons/fi';
 
@@ -9,6 +10,7 @@ interface DoiResultProps {
 }
 
 const DoiResult: React.FC<DoiResultProps> = ({ book, onDownload }) => {
+  const { t } = useI18n();
   return (
     <div className="doi-result-card">
       <div className="doi-result-cover">
@@ -21,11 +23,11 @@ const DoiResult: React.FC<DoiResultProps> = ({ book, onDownload }) => {
         </div>
         <div className="doi-metadata-grid">
           <div className="doi-detail-item">
-            <strong><FiHash /> DOI</strong>
+            <strong><FiHash /> {t('doi.doi')}</strong>
             <span>{book.id}</span>
           </div>
           <div className="doi-detail-item">
-            <strong><FiUsers /> Publisher</strong>
+            <strong><FiUsers /> {t('doi.publisher')}</strong>
             <span>{book.publisher}</span>
           </div>
           <div className="doi-detail-item">
@@ -39,7 +41,7 @@ const DoiResult: React.FC<DoiResultProps> = ({ book, onDownload }) => {
             onClick={() => onDownload(book)}
           >
             <FiDownload />
-            Download
+            {t('downloads.download')}
           </button>
         </div>
       </div>

@@ -16,10 +16,13 @@
   --foreground-darker: #707070;
   --accent: #8a2be2;
   --accent-hover: #9932cc;
+  --accent-glow: rgba(138, 43, 226, 0.2);
   --border: #2a2a2a;
   --border-light: #3c3c3c;
   --download-button-color: #2e8b57; /* SeaGreen */
   --download-button-hover-color: #20633f; /* Darker SeaGreen */
+  --success: #4ade80;
+  --error: #f87171;
 }
 
 [data-theme="light"] {
@@ -31,10 +34,13 @@
   --foreground-darker: #999999;
   --accent: #a052e2; /* A light purple accent for light theme */
   --accent-hover: #b36be5;
+  --accent-glow: rgba(160, 82, 226, 0.2);
   --border: #cccccc;
   --border-light: #dddddd;
   --download-button-color: #3cb371; /* MediumSeaGreen */
   --download-button-hover-color: #2e8b57; /* SeaGreen */
+  --success: #22c55e;
+  --error: #ef4444;
 }
 
 body {
@@ -54,8 +60,11 @@ body {
 
 .content-wrapper {
   display: flex;
-  flex-grow: 1;
+  flex: 1;
   overflow: hidden;
+  min-height: 0;
+  height: 100vh;
+  box-sizing: border-box;
 }
 
 .left-panel {
@@ -63,6 +72,12 @@ body {
   flex-direction: column;
   background-color: var(--background-light);
   border-right: 1px solid var(--border);
+  min-height: 0;
+  flex-shrink: 0;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .main-content {

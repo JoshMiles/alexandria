@@ -343,3 +343,53 @@
   flex: 1;
   min-width: 160px;
 }
+
+.language-options {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.language-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  transition: all 0.2s ease-in-out;
+}
+
+.language-option input[type="radio"] {
+  display: none;
+}
+
+.language-option input[type="radio"]:checked + .language-preview {
+  border-color: var(--accent);
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
+.language-preview {
+  width: 120px;
+  height: 60px;
+  border-radius: 8px;
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  background-color: var(--background-lighter);
+  transition: all 0.2s ease-in-out;
+}
+
+.language-flag {
+  font-size: 1.5rem;
+}
+
+.language-name {
+  font-size: 0.9rem;
+}

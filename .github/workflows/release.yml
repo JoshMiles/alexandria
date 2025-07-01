@@ -39,7 +39,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ runner.os }}-${{ matrix.arch || 'default' }}-artifacts
+          name: ${{ runner.os }}-${{ matrix.arch && matrix.arch || 'default' }}-artifacts
           path: out/
   
   release:

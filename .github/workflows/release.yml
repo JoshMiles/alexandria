@@ -60,6 +60,7 @@ jobs:
           files: out/**
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
       - name: Update README.md download links (Node.js)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

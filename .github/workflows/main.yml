@@ -35,7 +35,8 @@ jobs:
       
           VERSION = "${{ steps.get_version.outputs.version }}"
           REPO = "JoshMiles/alexandria"
-          MAC_URL = f"https://github.com/{REPO}/releases/download/v{VERSION}/Alexandria-{VERSION}-arm64.dmg"
+          MAC_M2_URL = f"https://github.com/{REPO}/releases/download/v{VERSION}/Alexandria-{VERSION}-arm64.dmg"
+          MAC_URL = f"https://github.com/{REPO}/releases/download/v{VERSION}/Alexandria-{VERSION}.dmg"
           WIN_URL = f"https://github.com/{REPO}/releases/download/v{VERSION}/Alexandria-Setup-{VERSION}.exe"
           LINUX_URL = f"https://github.com/{REPO}/releases/download/v{VERSION}/Alexandria-{VERSION}.AppImage"
       
@@ -47,7 +48,8 @@ jobs:
       
           new_table = (
               f"| **Windows** | [Alexandria-Setup-{VERSION}.exe]({WIN_URL}) |\n"
-              f"| **macOS**   | [Alexandria-{VERSION}-arm64.dmg]({MAC_URL}) |\n"
+              f"| **macOS Silicon**   | [Alexandria-{VERSION}-arm64.dmg]({MAC_M2_URL}) |\n"
+              f"| **macOS Intel**   | [Alexandria-{VERSION}-arm64.dmg]({MAC_URL}) |\n"
               f"| **Linux**   | [Alexandria-{VERSION}.AppImage]({LINUX_URL}) |\n"
           )
       

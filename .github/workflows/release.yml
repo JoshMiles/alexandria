@@ -23,7 +23,7 @@ jobs:
       - name: Package app
         run: npm run build:conveyor
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: installers
           path: out/

@@ -22,18 +22,22 @@ jobs:
         run: npm run build
       - name: Install Conveyor
         run: npm install -g @hydraulic/conveyor
-      - name: Set up Conveyor signing key
-        run: echo "app.signing-key = \"${{ secrets.CONVEYOR_SIGNING_KEY }}\"" > defaults.conf
-      - name: Debug - Show defaults.conf
-        run: cat defaults.conf
       - name: Build Windows app
-        run: conveyor -Kapp.machines=win.x64 make windows-app
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        run: conveyor -f ci.conveyor.conf -Kapp.machines=win.x64 make windows-app
       - name: Build Linux app
-        run: conveyor -Kapp.machines=linux.x64 make linux-app
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        run: conveyor -f ci.conveyor.conf -Kapp.machines=linux.x64 make linux-app
       - name: Build macOS Intel app
-        run: conveyor -Kapp.machines=mac.amd64 make mac-app
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        run: conveyor -f ci.conveyor.conf -Kapp.machines=mac.amd64 make mac-app
       - name: Build macOS Apple Silicon app
-        run: conveyor -Kapp.machines=mac.aarch64 make mac-app
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        run: conveyor -f ci.conveyor.conf -Kapp.machines=mac.aarch64 make mac-app
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:

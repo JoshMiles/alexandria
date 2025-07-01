@@ -1,6 +1,6 @@
 {
   "name": "alexandria",
-  "version": "0.1.30",
+  "version": "0.1.31",
   "description": "A modern desktop app for searching and downloading books.",
   "main": "main.js",
   "scripts": {

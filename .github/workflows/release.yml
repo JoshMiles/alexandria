@@ -10,7 +10,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+          - os: windows-latest
+          - os: macos-latest
+            arch: x64
+          - os: macos-latest
+            arch: arm64
     steps:
       - uses: actions/checkout@v3
       - name: Set up Node.js
@@ -22,11 +28,16 @@ jobs:
       - name: Build app (webpack)
         run: npm run build
       - name: Make distributables
-        run: npm run make
+        run: |
+          if [[ "${{ runner.os }}" == "macOS" ]]; then
+            npm run make -- --arch=${{ matrix.arch }}
+          else
+            npm run make
+          fi
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ runner.os }}-artifacts
+          name: ${{ runner.os }}-${{ matrix.arch || 'default' }}-artifacts
           path: out/
   
   release:
@@ -39,8 +50,46 @@ jobs:
         with:
           path: out/
       - name: Create GitHub Release
+        id: create_release
         uses: softprops/action-gh-release@v2
         with:
           files: out/**
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Update README.md with download links
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF: ${{ github.ref }}
+        run: |
+          TAG_NAME=$(echo $GITHUB_REF | sed 's/refs\/tags\///')
+          API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${TAG_NAME}"
+          ASSETS_JSON=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" $API_URL)
+          get_asset_url() {
+            echo "$ASSETS_JSON" | jq -r ".assets[] | select(.name | test(\"$1\")) | .browser_download_url"
+          }
+          WIN_URL=$(get_asset_url ".exe$")
+          MAC_X64_ZIP_URL=$(get_asset_url "darwin-x64.*.zip$")
+          MAC_ARM64_ZIP_URL=$(get_asset_url "darwin-arm64.*.zip$")
+          MAC_X64_PKG_URL=$(get_asset_url "darwin-x64.*.pkg$")
+          MAC_ARM64_PKG_URL=$(get_asset_url "darwin-arm64.*.pkg$")
+          DEB_URL=$(get_asset_url ".deb$")
+          RPM_URL=$(get_asset_url ".rpm$")
+          cat > README.md <<EOL
+# Alexandria
+
+| Platform         | Installer/ZIP Link |
+|------------------|-------------------|
+| Windows          | [Download EXE]($WIN_URL) |
+| macOS (Intel)    | [Download ZIP]($MAC_X64_ZIP_URL) / [Download PKG]($MAC_X64_PKG_URL) |
+| macOS (Apple)    | [Download ZIP]($MAC_ARM64_ZIP_URL) / [Download PKG]($MAC_ARM64_PKG_URL) |
+| Linux (DEB)      | [Download DEB]($DEB_URL) |
+| Linux (RPM)      | [Download RPM]($RPM_URL) |
+
+For more information, visit the [Alexandria GitHub repository](https://github.com/JoshMiles/alexandria).
+EOL
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git add README.md
+          git commit -m "docs: update README.md with latest download links [skip ci]" || echo "No changes to commit."
+          git push

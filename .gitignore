@@ -111,3 +111,7 @@ search_results.html
 .DS_Store
 
 out/
+windows.crt
+windows.key
+sparkle.key
+apple.p12

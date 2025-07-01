@@ -27,13 +27,15 @@ jobs:
         run: npm install
       - name: Build app (webpack)
         run: npm run build
-      - name: Make distributables
-        run: |
-          if [[ "${{ runner.os }}" == "macOS" ]]; then
-            npm run make -- --arch=${{ matrix.arch }}
-          else
-            npm run make
-          fi
+      - name: Make distributables (macOS x64)
+        if: matrix.os == 'macos-latest' && matrix.arch == 'x64'
+        run: npm run make -- --arch=x64
+      - name: Make distributables (macOS arm64)
+        if: matrix.os == 'macos-latest' && matrix.arch == 'arm64'
+        run: npm run make -- --arch=arm64
+      - name: Make distributables (other)
+        if: matrix.os != 'macos-latest'
+        run: npm run make
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:

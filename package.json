@@ -81,7 +81,7 @@
       "preload.js"
     ],
     "mac": {
-      "target": "dmg"
+      "target": "dmg",
       "arch": [
           "universal"
       ]

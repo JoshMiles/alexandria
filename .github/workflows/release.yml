@@ -20,8 +20,15 @@ jobs:
         run: npm run build
       - name: Copy Electron entry files to dist
         run: cp main.js preload.js dist/
-      - name: Copy package.json to dist
-        run: cp package.json dist/
+      - name: Create minimal Electron package.json in dist
+        run: |
+          cat > dist/package.json <<EOL
+          {
+            "name": "alexandria",
+            "version": "0.1.11",
+            "main": "main.js"
+          }
+          EOL
       - name: List dist contents
         run: ls -l dist/
       - name: Build Windows app

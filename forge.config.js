@@ -18,13 +18,6 @@ module.exports = {
       platforms: ['darwin'],
     },
     {
-      name: '@electron-forge/maker-pkg',
-      platforms: ['darwin'],
-      config: {
-        identity: isCI ? '' : undefined,
-      },
-    },
-    {
       name: '@electron-forge/maker-deb',
       config: {},
     },

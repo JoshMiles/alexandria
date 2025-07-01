@@ -44,8 +44,8 @@ function findAsset(assets, pattern) {
 | Platform         | Installer/ZIP Link |
 |------------------|-------------------|
 | Windows          | [Download EXE](${WIN_URL}) |
-| macOS (Intel)    | [Download ZIP](${MAC_X64_ZIP_URL}) / [Download PKG](${MAC_X64_PKG_URL}) |
-| macOS (Apple)    | [Download ZIP](${MAC_ARM64_ZIP_URL}) / [Download PKG](${MAC_ARM64_PKG_URL}) |
+| macOS (Intel)    | [Download ZIP](${MAC_X64_ZIP_URL}) |
+| macOS (Apple)    | [Download ZIP](${MAC_ARM64_ZIP_URL}) |
 | Linux (DEB)      | [Download DEB](${DEB_URL}) |
 | Linux (RPM)      | [Download RPM](${RPM_URL}) |
 `;

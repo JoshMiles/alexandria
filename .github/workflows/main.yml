@@ -49,7 +49,7 @@ jobs:
           new_table = (
               f"| **Windows** | [Alexandria-Setup-{VERSION}.exe]({WIN_URL}) |\n"
               f"| **macOS Silicon**   | [Alexandria-{VERSION}-arm64.dmg]({MAC_M2_URL}) |\n"
-              f"| **macOS Intel**   | [Alexandria-{VERSION}-arm64.dmg]({MAC_URL}) |\n"
+              f"| **macOS Intel**   | [Alexandria-{VERSION}-.dmg]({MAC_URL}) |\n"
               f"| **Linux**   | [Alexandria-{VERSION}.AppImage]({LINUX_URL}) |\n"
           )
       

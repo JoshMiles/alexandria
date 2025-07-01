@@ -96,6 +96,11 @@
       "provider": "github",
       "owner": "joshmiles",
       "repo": "alexandria"
-    }
+    },
+    "electronUniversal": {
+      "allowList": [
+        "dist/mac-universal-x64-temp/Electron.app"
+      ]
+  }
   }
 }

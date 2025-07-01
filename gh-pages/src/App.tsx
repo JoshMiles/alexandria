@@ -1,8 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+
+// Define OSKey type
+type OSKey = 'win' | 'mac_x64' | 'mac_arm64' | 'linux_deb' | 'linux_rpm';
 
 const GITHUB_API = 'https://api.github.com/repos/JoshMiles/alexandria/releases/latest';
 
-const OS_NAMES = {
+const OS_NAMES: Record<OSKey, string> = {
   win: 'Windows',
   mac_x64: 'macOS (Intel)',
   mac_arm64: 'macOS (Apple)',
@@ -24,7 +27,7 @@ const getOS = () => {
   return 'win';
 };
 
-const assetForOS = (assets: any[], os: string) => {
+const assetForOS = (assets: any[], os: OSKey) => {
   switch (os) {
     case 'win':
       return assets.find(a => a.name.endsWith('.exe'));
@@ -41,7 +44,7 @@ const assetForOS = (assets: any[], os: string) => {
   }
 };
 
-const allAssetLinks = (assets: any[]) => ({
+const allAssetLinks = (assets: any[]): Record<OSKey, any> => ({
   win: assets.find(a => a.name.endsWith('.exe')),
   mac_x64: assets.find(a => /darwin-x64.*\.zip$/.test(a.name)),
   mac_arm64: assets.find(a => /darwin-arm64.*\.zip$/.test(a.name)),
@@ -56,7 +59,7 @@ const font = `'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 
 
 export default function App() {
   const [assets, setAssets] = useState<any[]>([]);
-  const [os, setOS] = useState(getOS());
+  const [os] = useState<OSKey>(getOS());
   const [loading, setLoading] = useState(true);
   const [version, setVersion] = useState('');
 
@@ -144,10 +147,10 @@ export default function App() {
         <div style={{ marginTop: 24, fontSize: '0.98rem', color: '#bdb8d7' }}>
           Other platforms:<br />
           {Object.entries(OS_NAMES).map(([key, label]) =>
-            key !== os && links[key] ? (
+            key !== os && links[key as OSKey] ? (
               <a
                 key={key}
-                href={links[key].browser_download_url}
+                href={links[key as OSKey].browser_download_url}
                 style={{
                   color: accent,
                   margin: '0 0.5rem',

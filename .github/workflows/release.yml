@@ -23,7 +23,7 @@ jobs:
       - name: Install Conveyor
         run: npm install -g @hydraulic/conveyor
       - name: Set up Conveyor signing key
-        run: echo "${{ secrets.CONVEYOR_SIGNING_KEY }}" > defaults.conf
+        run: echo "app.signing-key = \"${{ secrets.CONVEYOR_SIGNING_KEY }}\"" > defaults.conf
       - name: Debug - Show defaults.conf
         run: cat defaults.conf
       - name: Build Windows app

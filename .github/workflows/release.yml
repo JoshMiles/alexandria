@@ -20,6 +20,8 @@ jobs:
         run: npm install
       - name: Build app (webpack)
         run: npm run build
+      - name: Copy Electron entry files to dist
+        run: cp main.js preload.js dist/
       - name: Install Conveyor
         run: npm install -g @hydraulic/conveyor
       - name: Build Windows app

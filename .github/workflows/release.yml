@@ -42,7 +42,6 @@ jobs:
       - name: Get release version
         id: get_version
         run: echo "::set-output name=version::${GITHUB_REF#refs/tags/v}"
-
       - name: Update README download links
         uses: DamianReeves/write-file-action@v1.2
         with:
@@ -134,7 +133,6 @@ jobs:
             ## ⭐️ Community
             
             For more information, visit the [Alexandria GitHub repository](https://github.com/JoshMiles/alexandria).
-
       - name: Commit and push updated README
         run: |
           git config --global user.name 'github-actions[bot]'

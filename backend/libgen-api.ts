@@ -900,7 +900,7 @@ export async function testLibgenAccess(win: BrowserWindow, logger: typeof log): 
   logger.info('Starting LibGen Fiction access test...');
   
   // Test the main fiction domain first
-  sendStatusUpdate(win, 'Testing main LibGen Fiction domain...', logger);
+  sendStatusUpdate(win, 'Connecting to LibGen Fiction...', logger);
   try {
     const response = await axios.get(`${API_URLS.LIBGEN_FICTION}/?q=test`, {
       timeout: 10000,
@@ -910,7 +910,7 @@ export async function testLibgenAccess(win: BrowserWindow, logger: typeof log): 
     });
     if (response.status === 200) {
       logger.info('Main LibGen Fiction domain is accessible');
-      sendStatusUpdate(win, 'Main LibGen Fiction domain is working!', logger);
+      sendStatusUpdate(win, 'Successfully connected to LibGen Fiction!', logger);
       libgenAccessManager.lastSuccessful = { mirror: API_URLS.LIBGEN_FICTION };
       libgenAccessManager.lastError = null;
       return { success: true, workingMirror: API_URLS.LIBGEN_FICTION, error: null };

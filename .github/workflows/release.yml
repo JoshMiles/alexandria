@@ -18,14 +18,12 @@ jobs:
         run: npm install
       - name: Build app (webpack)
         run: npm run build
-      - name: Copy Electron main process and preload to dist
-        run: cp ./main.js ./preload.js dist/
       - name: Get Electron version
         id: get_electron_version
         run: echo "version=$(node -p 'require(\"./package.json\").devDependencies.electron')" >> $GITHUB_OUTPUT
-      - name: Create minimal Electron package.json in dist
+      - name: Create minimal Electron package.json in root (for CI)
         run: |
-          cat > dist/package.json <<EOL
+          cat > package.json <<EOL
           {
             "name": "alexandria",
             "version": "0.1.11",
@@ -35,8 +33,8 @@ jobs:
             }
           }
           EOL
-      - name: List dist contents
-        run: ls -l dist/
+      - name: List root contents
+        run: ls -l
       - name: Build Windows app
         uses: hydraulic-software/conveyor/actions/build@v18.1
         with:

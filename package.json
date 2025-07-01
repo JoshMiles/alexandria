@@ -81,10 +81,7 @@
       "preload.js"
     ],
     "mac": {
-      "target": "dmg",
-      "arch": [
-          "universal"
-      ]
+      "target": "dmg"
     },
     "win": {
       "target": "nsis"

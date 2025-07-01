@@ -1,6 +1,6 @@
 {
   "name": "alexandria",
-  "version": "0.1.44",
+  "version": "0.1.45",
   "description": "A modern desktop app for searching and downloading books.",
   "main": "main.js",
   "scripts": {
@@ -84,10 +84,12 @@
     "webpack-cli": "^6.0.1"
   },
   "build": {
-    "publish": [{
-      "provider": "github",
-      "owner": "joshmiles",
-      "repo": "alexandria"
-    }]
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "joshmiles",
+        "repo": "alexandria"
+      }
+    ]
   }
 }

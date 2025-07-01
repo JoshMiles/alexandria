@@ -22,7 +22,7 @@ jobs:
         run: cp ./main.js ./preload.js dist/
       - name: Get Electron version
         id: get_electron_version
-        run: echo "version=$(node -p \"require('./package.json').devDependencies.electron\")" >> $GITHUB_OUTPUT
+        run: echo "version=$(node -p 'require(\"./package.json\").devDependencies.electron')" >> $GITHUB_OUTPUT
       - name: Create minimal Electron package.json in dist
         run: |
           cat > dist/package.json <<EOL

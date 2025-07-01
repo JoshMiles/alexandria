@@ -1,6 +1,8 @@
 const { FusesPlugin } = require('@electron-forge/plugin-fuses');
 const { FuseV1Options, FuseVersion } = require('@electron/fuses');
 
+const isCI = process.env.CI === 'true';
+
 module.exports = {
   packagerConfig: {
     asar: true,
@@ -18,7 +20,9 @@ module.exports = {
     {
       name: '@electron-forge/maker-pkg',
       platforms: ['darwin'],
-      config: {},
+      config: {
+        identity: isCI ? null : undefined,
+      },
     },
     {
       name: '@electron-forge/maker-deb',

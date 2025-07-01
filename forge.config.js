@@ -21,7 +21,7 @@ module.exports = {
       name: '@electron-forge/maker-pkg',
       platforms: ['darwin'],
       config: {
-        identity: isCI ? null : undefined,
+        identity: isCI ? '' : undefined,
       },
     },
     {

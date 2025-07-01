@@ -12,6 +12,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
+        arch: ["--x64", "--arm64"]
 
     permissions:
       contents: write
@@ -35,6 +36,7 @@ jobs:
         uses: samuelmeuli/action-electron-builder@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          args: ${{ matrix.arch }}
           release: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

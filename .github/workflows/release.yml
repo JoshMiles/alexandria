@@ -12,7 +12,9 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
+            arch: default
           - os: windows-latest
+            arch: default
           - os: macos-latest
             arch: x64
           - os: macos-latest
@@ -58,40 +60,15 @@ jobs:
           files: out/**
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Update README.md with download links
+      - name: Update README.md download links (Node.js)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_REF: ${{ github.ref }}
-        run: |
-          TAG_NAME=$(echo $GITHUB_REF | sed 's/refs\/tags\///')
-          API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${TAG_NAME}"
-          ASSETS_JSON=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" $API_URL)
-          get_asset_url() {
-            echo "$ASSETS_JSON" | jq -r ".assets[] | select(.name | test(\"$1\")) | .browser_download_url"
-          }
-          WIN_URL=$(get_asset_url ".exe$")
-          MAC_X64_ZIP_URL=$(get_asset_url "darwin-x64.*.zip$")
-          MAC_ARM64_ZIP_URL=$(get_asset_url "darwin-arm64.*.zip$")
-          MAC_X64_PKG_URL=$(get_asset_url "darwin-x64.*.pkg$")
-          MAC_ARM64_PKG_URL=$(get_asset_url "darwin-arm64.*.pkg$")
-          DEB_URL=$(get_asset_url ".deb$")
-          RPM_URL=$(get_asset_url ".rpm$")
-          cat > README.md <<EOL
-# Alexandria
-
-| Platform         | Installer/ZIP Link |
-|------------------|-------------------|
-| Windows          | [Download EXE]($WIN_URL) |
-| macOS (Intel)    | [Download ZIP]($MAC_X64_ZIP_URL) / [Download PKG]($MAC_X64_PKG_URL) |
-| macOS (Apple)    | [Download ZIP]($MAC_ARM64_ZIP_URL) / [Download PKG]($MAC_ARM64_PKG_URL) |
-| Linux (DEB)      | [Download DEB]($DEB_URL) |
-| Linux (RPM)      | [Download RPM]($RPM_URL) |
-
-For more information, visit the [Alexandria GitHub repository](https://github.com/JoshMiles/alexandria).
-EOL
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
-          git add README.md
-          git commit -m "docs: update README.md with latest download links [skip ci]" || echo "No changes to commit."
-          git push
+        run: node scripts/update-readme.js
+      - name: Commit and push README.md changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update README.md download links for release ${GITHUB_REF}"
+          file_pattern: README.md
+          branch: main

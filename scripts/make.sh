@@ -1,5 +1,5 @@
 #!/bin/bash
-# Cleans, builds, and creates executables for each platform.
+# Cleans, builds, and creates distributables using Electron Forge.
 set -e
 
 echo "Running make script..."
@@ -10,7 +10,7 @@ echo "Running make script..."
 # Build the application
 ./scripts/build.sh
 
-# Create distributable packages
-npm run dist
+# Create distributable packages with Electron Forge
+npm run make
 
 echo "Make script complete."

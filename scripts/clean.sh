@@ -10,8 +10,11 @@ rm -rf node_modules package-lock.json
 # Remove dist folder
 rm -rf dist
 
-# Remove webpack build artifacts
-rm -rf build
+# Remove out folder
+rm -rf out
+
+# Remove webpack cache
+rm -rf node_modules/.cache/webpack
 
 # Optional: Clear npm cache
 npm cache clean --force

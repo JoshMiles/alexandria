@@ -19,26 +19,28 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     window.electron.getDownloads().then((initialDownloads) => {
-      const normalizedDownloads = initialDownloads.map((d) => ({
+      const normalizedDownloads = initialDownloads.map((d: Download) => ({
         ...d,
         progress: d.progress || { percent: 0, transferred: 0, total: 0 },
       }));
-      setDownloads(normalizedDownloads);
+      setDownloads(normalizedDownloads.sort((a: Download, b: Download) => b.startTime - a.startTime));
     });
     window.electron.onDownloadsUpdated((updatedDownloads) => {
-      const normalizedDownloads = updatedDownloads.map((d) => ({
+      const normalizedDownloads = updatedDownloads.map((d: Download) => ({
         ...d,
         progress: d.progress || { percent: 0, transferred: 0, total: 0 },
       }));
-      setDownloads(normalizedDownloads);
+      setDownloads(normalizedDownloads.sort((a: Download, b: Download) => b.startTime - a.startTime));
     });
     window.electron.onDownloadProgress(({ clientId, progress }) => {
       setDownloads((prevDownloads) =>
-        prevDownloads.map((d) =>
-          d.client_id === clientId
-            ? { ...d, progress, state: 'downloading' }
-            : d
-        )
+        prevDownloads
+          .map((d: Download) =>
+            d.client_id === clientId
+              ? { ...d, progress, state: 'downloading' as Download['state'] }
+              : d
+          )
+          .sort((a: Download, b: Download) => b.startTime - a.startTime)
       );
     });
   }, []);
@@ -52,14 +54,14 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       filename: '',
       path: '',
     };
-    setDownloads((prevDownloads) => [...prevDownloads, newDownload]);
+    setDownloads((prevDownloads) => [newDownload, ...prevDownloads].sort((a: Download, b: Download) => b.startTime - a.startTime));
     window.electron.download({ book });
   }, []);
 
   const handleCancelDownload = useCallback((clientId: string, title: string) => {
     window.electron.cancelDownload(clientId);
     setDownloads((prevDownloads) =>
-      prevDownloads.map((d) =>
+      prevDownloads.map((d: Download) =>
         d.client_id === clientId ? { ...d, state: 'cancelled' } : d
       )
     );

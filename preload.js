@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('electron', {
   cancelDownload: (clientId) => ipcRenderer.invoke('cancel-download', clientId),
   openFile: (filename) => ipcRenderer.invoke('open-file', filename),
   openFolder: (filename) => ipcRenderer.invoke('open-folder', filename),
+  openLogsFolder: () => ipcRenderer.invoke('open-logs-folder'),
   on: (channel, callback) => {
     const validChannels = ['update-message', 'search-status'];
     if (validChannels.includes(channel)) {
@@ -30,5 +31,8 @@ contextBridge.exposeInMainWorld('electron', {
   addLibgenMirror: (url) => ipcRenderer.invoke('add-libgen-mirror', url),
   removeLibgenMirror: (url) => ipcRenderer.invoke('remove-libgen-mirror', url),
   testLibgenAccess: () => ipcRenderer.invoke('test-libgen-access'),
+  getLatestLog: () => ipcRenderer.invoke('get-latest-log'),
+  onLogUpdate: (callback) => ipcRenderer.on('log-update', (event, line) => callback(line)),
+  offLogUpdate: (callback) => ipcRenderer.removeListener('log-update', (event, line) => callback(line)),
 });
 

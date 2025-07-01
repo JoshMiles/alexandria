@@ -1,7 +1,7 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { BrowserWindow } from 'electron';
-import type log from 'electron-log';
+import logger from './logger';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 
 // Constants
@@ -123,13 +123,13 @@ const coverCache = new Map<string, string>();
 /**
  * Fetches the cover image URL from the /fiction/[md5] page
  */
-const fetchFictionCoverUrl = async (md5: string, logger: typeof log): Promise<string | null> => {
+const fetchFictionCoverUrl = async (md5: string): Promise<string | null> => {
     if (coverCache.has(md5)) {
         return coverCache.get(md5)!;
     }
     try {
         const url = `${API_URLS.LIBGEN_FICTION}/${md5}`;
-        const html = await httpGet(url, 'text', logger, 2, true);
+        const html = await httpGet(url, 'text', 2, true);
         const $ = cheerio.load(html);
         // Find the image with src containing 'fictioncovers'
         const img = $('img[src*="fictioncovers"]');
@@ -151,7 +151,7 @@ const fetchFictionCoverUrl = async (md5: string, logger: typeof log): Promise<st
 /**
  * Makes HTTP GET requests with error handling, retry logic, and caching
  */
-const httpGet = async (url: string, responseType: 'text' | 'json' = 'text', logger: typeof log, retries: number = 3, useCache: boolean = true): Promise<any> => {
+const httpGet = async (url: string, responseType: 'text' | 'json' = 'text', retries: number = 3, useCache: boolean = true): Promise<any> => {
     const cacheKey = `${url}-${responseType}`;
     
     if (useCache) {
@@ -198,7 +198,7 @@ const httpGet = async (url: string, responseType: 'text' | 'json' = 'text', logg
     });
 };
 
-const sendStatusUpdate = (win: BrowserWindow, message: string, logger: typeof log) => {
+const sendStatusUpdate = (win: BrowserWindow, message: string) => {
     if (win) {
         logger.info(`Sending search status update: ${message}`);
         win.webContents.send('search-status', message);
@@ -208,14 +208,14 @@ const sendStatusUpdate = (win: BrowserWindow, message: string, logger: typeof lo
 /**
  * Fetches Google Books information for a given ISBN with error handling and caching
  */
-const getGoogleBookInfo = async (isbn: string, logger: typeof log) => {
+const getGoogleBookInfo = async (isbn: string) => {
     if (!isbn) return null;
     
     const url = `${API_URLS.GOOGLE_BOOKS}?q=isbn:${isbn}`;
     logger.info(`Fetching Google Books info for ISBN: ${isbn}`);
     
     try {
-        const data = await httpGet(url, 'json', logger, 2, true);
+        const data = await httpGet(url, 'json', 2, true);
         if (data.totalItems > 0) {
             const volumeInfo = data.items[0].volumeInfo;
             const saleInfo = data.items[0].saleInfo;
@@ -252,7 +252,7 @@ const getGoogleBookInfo = async (isbn: string, logger: typeof log) => {
     return null;
 };
 
-const extractIsbnFromMeta = (meta: any, logger: typeof log) => {
+const extractIsbnFromMeta = (meta: any) => {
     try {
         const addNode = meta.add;
         if (!addNode || typeof addNode !== 'object') return null;
@@ -270,7 +270,7 @@ const extractIsbnFromMeta = (meta: any, logger: typeof log) => {
     return null;
 };
 
-const parseInitialSearchResults = (html: string, logger: typeof log): Book[] => {
+const parseInitialSearchResults = (html: string): Book[] => {
     logger.info('Parsing initial search results from HTML.');
     const $ = cheerio.load(html);
     const results: Book[] = [];
@@ -376,14 +376,14 @@ const parseInitialSearchResults = (html: string, logger: typeof log): Book[] => 
     return results;
 };
 
-const searchByDoi = async (win: BrowserWindow, doi: string, logger: typeof log): Promise<Book[]> => {
+const searchByDoi = async (win: BrowserWindow, doi: string): Promise<Book[]> => {
     logger.info(`Searching by DOI: ${doi}`);
     const crossrefUrl = `https://api.crossref.org/works/${doi}`;
     const annasUrl = `https://annas-archive.org/scidb/${doi}`;
 
     try {
         logger.info(`Fetching metadata from Crossref for DOI: ${doi}`);
-        const metadata = await httpGet(crossrefUrl, 'json', logger, 2, true);
+        const metadata = await httpGet(crossrefUrl, 'json', 2, true);
         if (metadata.status !== 'ok') {
             logger.error(`Could not retrieve metadata for DOI ${doi} from Crossref.`);
             return [];
@@ -420,10 +420,11 @@ const searchByDoi = async (win: BrowserWindow, doi: string, logger: typeof log):
 }
 
 // Function to fetch metadata from individual book pages
-const fetchBookMetadata = async (book: Book, logger: typeof log): Promise<Book> => {
+const fetchBookMetadata = async (win: BrowserWindow, book: Book, index: number, total: number): Promise<Book> => {
+    sendStatusUpdate(win, `Fetching Metadata for Book ${index + 1} out of ${total} from Google Books`);
     try {
         const url = `${API_URLS.LIBGEN_FICTION}/${book.id}`;
-        const html = await httpGet(url, 'text', logger, 2, true);
+        const html = await httpGet(url, 'text', 2, true);
         const $ = cheerio.load(html);
         
         // Extract title from the book info table
@@ -473,7 +474,7 @@ const fetchBookMetadata = async (book: Book, logger: typeof log): Promise<Book> 
         
         // Try to fetch Google Books info if we have an ISBN
         if (book.isbn) {
-            const googleInfo = await getGoogleBookInfo(book.isbn, logger);
+            const googleInfo = await getGoogleBookInfo(book.isbn);
             if (googleInfo) {
                 book.description = googleInfo.description || book.description;
                 book.pages = googleInfo.pages || book.pages;
@@ -495,7 +496,7 @@ const fetchBookMetadata = async (book: Book, logger: typeof log): Promise<Book> 
 };
 
 // Optimized merge function with parallel processing
-const mergeBookData = async (initialResults: Book[], logger: typeof log): Promise<Book[]> => {
+const mergeBookData = async (win: BrowserWindow, initialResults: Book[]): Promise<Book[]> => {
     logger.info('Merging book data with metadata and Google Books info.');
     
     // Process books in parallel batches to avoid overwhelming APIs
@@ -504,10 +505,9 @@ const mergeBookData = async (initialResults: Book[], logger: typeof log): Promis
     
     for (let i = 0; i < initialResults.length; i += batchSize) {
         const batch = initialResults.slice(i, i + batchSize);
-        const batchPromises = batch.map(async (book) => {
-            return await fetchBookMetadata(book, logger);
+        const batchPromises = batch.map(async (book, j) => {
+            return await fetchBookMetadata(win, book, i + j, initialResults.length);
         });
-        
         const batchResults = await Promise.all(batchPromises);
         finalResults.push(...batchResults);
     }
@@ -516,12 +516,12 @@ const mergeBookData = async (initialResults: Book[], logger: typeof log): Promis
     return finalResults;
 };
 
-export const search = async (win: BrowserWindow, query: string, logger: typeof log): Promise<Book[]> => {
+export const search = async (win: BrowserWindow, query: string): Promise<Book[]> => {
     const doiRegex = /10\.\d{4,9}\/[\-._;()\/:A-Z0-9]+$/i;
     if (doiRegex.test(query)) {
         logger.info(`DOI detected: ${query}`);
-        sendStatusUpdate(win, 'DOI detected', logger);
-        return searchByDoi(win, query, logger);
+        sendStatusUpdate(win, 'DOI detected');
+        return searchByDoi(win, query);
     }
 
     logger.info(`Searching for '${query}'...`);
@@ -530,40 +530,89 @@ export const search = async (win: BrowserWindow, query: string, logger: typeof l
     // Use LibGenAccessManager for fiction search
     const searchPath = `/fiction/?q=${encodedQuery}`;
     let html = null;
-    
+    let allResults: Book[] = [];
+    let totalPages = 1;
+    let pageSelectorFound = false;
+
     try {
-        sendStatusUpdate(win, 'Connecting to LibGen Fiction...', logger);
-        html = await libgenAccessManager.get(searchPath, 'text', logger);
+        sendStatusUpdate(win, 'Connecting to LibGen Fiction...');
+        html = await libgenAccessManager.get(searchPath, 'text');
         const currentMethod = libgenAccessManager.getCurrentMethod();
-        sendStatusUpdate(win, `Successfully connected to ${currentMethod?.mirror || 'LibGen Fiction'}`, logger);
+        sendStatusUpdate(win, `Successfully connected to ${currentMethod?.mirror || 'LibGen Fiction'}`);
+
+        // Parse the number of pages from the page_selector
+        const $ = cheerio.load(html);
+        const pageSelector = $('select.page_selector');
+        if (pageSelector.length > 0) {
+            const options = pageSelector.find('option');
+            totalPages = options.length;
+            pageSelectorFound = true;
+        }
+        logger.info(`Detected ${totalPages} page(s) of results.`);
+
+        // Always fetch the first page
+        allResults = parseInitialSearchResults(html);
+
+        // Fetch additional pages if present
+        if (pageSelectorFound) {
+            for (let page = 2; page <= totalPages; page++) {
+                sendStatusUpdate(win, `Fetching page ${page} of ${totalPages}...`);
+                const pagedPath = `/fiction/?q=${encodedQuery}&page=${page}`;
+                let pageHtml;
+                try {
+                    pageHtml = await libgenAccessManager.get(pagedPath, 'text');
+                } catch (err) {
+                    logger.warn(`Failed to fetch page ${page}:`, err);
+                    continue;
+                }
+                const pageResults = parseInitialSearchResults(pageHtml);
+                allResults = allResults.concat(pageResults);
+            }
+        } else {
+            // If no page selector, keep fetching pages until no results are returned
+            let page = 2;
+            while (true) {
+                sendStatusUpdate(win, `Fetching page ${page}...`);
+                const pagedPath = `/fiction/?q=${encodedQuery}&page=${page}`;
+                let pageHtml;
+                try {
+                    pageHtml = await libgenAccessManager.get(pagedPath, 'text');
+                } catch (err) {
+                    logger.warn(`Failed to fetch page ${page}:`, err);
+                    break;
+                }
+                const pageResults = parseInitialSearchResults(pageHtml);
+                if (pageResults.length === 0) break;
+                allResults = allResults.concat(pageResults);
+                page++;
+            }
+        }
     } catch (error) {
         const lastError = libgenAccessManager.getLastError() || (error as any)?.message || String(error);
         logger.error(`All fiction mirrors failed for search:`, lastError);
-        sendStatusUpdate(win, `All fiction mirrors failed. Cannot reach LibGen Fiction. Error: ${lastError}`, logger);
+        sendStatusUpdate(win, `All fiction mirrors failed. Cannot reach LibGen Fiction. Error: ${lastError}`);
         return [];
     }
 
-    sendStatusUpdate(win, 'Parsing search results...', logger);
-    const initialResults = parseInitialSearchResults(html, logger);
-    if (initialResults.length === 0) {
+    if (allResults.length === 0) {
         logger.warn(`No results for query: '${query}'`);
-        sendStatusUpdate(win, `No results found for "${query}"`, logger);
+        sendStatusUpdate(win, `No results found for "${query}"`);
         return [];
     }
 
     // Sort results: English first, then others
-    const englishBooks = initialResults.filter(book => book.language?.toLowerCase() === 'english');
-    const otherBooks = initialResults.filter(book => book.language?.toLowerCase() !== 'english');
+    const englishBooks = allResults.filter(book => book.language?.toLowerCase() === 'english');
+    const otherBooks = allResults.filter(book => book.language?.toLowerCase() !== 'english');
     const sortedInitialResults = [...englishBooks, ...otherBooks];
 
     // Fetch metadata and enrich with Google Books data
-    sendStatusUpdate(win, 'Fetching book metadata...', logger);
-    const enrichedResults = await mergeBookData(sortedInitialResults, logger);
+    sendStatusUpdate(win, 'Fetching book metadata...');
+    const enrichedResults = await mergeBookData(win, sortedInitialResults);
     
-    sendStatusUpdate(win, 'Enriching data with Google Books...', logger);
+    sendStatusUpdate(win, 'Enriching data with Google Books...');
 
     logger.info(`Search for '${query}' completed, returning ${enrichedResults.length} results.`);
-    sendStatusUpdate(win, `Found ${enrichedResults.length} results for "${query}"`, logger);
+    sendStatusUpdate(win, `Found ${enrichedResults.length} results for "${query}"`);
     return enrichedResults;
 };
 
@@ -578,16 +627,15 @@ export const search = async (win: BrowserWindow, query: string, logger: typeof l
  * 
  * @param win - The Electron BrowserWindow instance for sending status updates.
  * @param query - The search query (title, author, ISBN, or DOI).
- * @param logger - Logger instance for logging info, warnings, and errors.
  * @returns Promise<Book[]> - A promise resolving to an array of Book objects.
  */
-export const getDownloadLinks = async (downloadPageUrl: string, logger: typeof log): Promise<string[]> => {
+export const getDownloadLinks = async (downloadPageUrl: string): Promise<string[]> => {
     logger.info(`Getting download links from page: ${downloadPageUrl}`);
     try {
         // Special handling for libgen.li ads.php links
         if (downloadPageUrl.includes('libgen.li/ads.php?md5=')) {
             logger.info('Resolving libgen.li ads.php link for direct download...');
-            const html = await httpGet(downloadPageUrl, 'text', logger, 2, false);
+            const html = await httpGet(downloadPageUrl, 'text', 2, false);
             const $ = cheerio.load(html);
             // Find the get.php link with &key
             const getLink = $('a[href*="get.php"][href*="key="]').attr('href');
@@ -611,7 +659,7 @@ export const getDownloadLinks = async (downloadPageUrl: string, logger: typeof l
                 logger.info(`Trying libgen.li ads.php link: ${libgenLiUrl}`);
                 
                 try {
-                    const html = await httpGet(libgenLiUrl, 'text', logger, 2, false);
+                    const html = await httpGet(libgenLiUrl, 'text', 2, false);
                     const $ = cheerio.load(html);
                                 const getLink = $('a[href*="get.php"][href*="key="]').attr('href');
             if (getLink) {
@@ -630,10 +678,10 @@ export const getDownloadLinks = async (downloadPageUrl: string, logger: typeof l
         let html;
         if (downloadPageUrl.startsWith('http') && (downloadPageUrl.includes('libgen.is') || downloadPageUrl.includes('libgen.rs') || downloadPageUrl.includes('libgen.st'))) {
             const url = new URL(downloadPageUrl);
-            html = await libgenAccessManager.get(url.pathname + url.search, 'text', logger);
+            html = await libgenAccessManager.get(url.pathname + url.search, 'text');
         } else {
             // Fallback to old logic for Anna's Archive or other domains
-            html = await httpGet(downloadPageUrl, 'text', logger, 2, false);
+            html = await httpGet(downloadPageUrl, 'text', 2, false);
         }
         const $ = cheerio.load(html);
 
@@ -682,11 +730,11 @@ export const getDownloadLinks = async (downloadPageUrl: string, logger: typeof l
     }
 };
 
-export const getSciHubDownloadLink = async (doi: string, logger: typeof log): Promise<string | null> => {
+export const getSciHubDownloadLink = async (doi: string): Promise<string | null> => {
     const sciHubUrl = `https://sci-hub.box/${doi}`;
     logger.info(`Attempting to get Sci-Hub download link from: ${sciHubUrl}`);
     try {
-        const html = await httpGet(sciHubUrl, 'text', logger, 2, false);
+        const html = await httpGet(sciHubUrl, 'text', 2, false);
         const $ = cheerio.load(html);
         let pdfLink = $('#pdf').attr('src');
         logger.info(`Extracted PDF link from #pdf element: ${pdfLink}`);
@@ -710,13 +758,13 @@ export const getSciHubDownloadLink = async (doi: string, logger: typeof log): Pr
     }
 };
 
-export const resolveDirectDownloadLink = async (directLink: string, logger: typeof log): Promise<string> => {
+export const resolveDirectDownloadLink = async (directLink: string): Promise<string> => {
     logger.info(`Resolving direct download link: ${directLink}`);
     try {
         // Special handling for libgen.li ads.php links
         if (directLink.includes('libgen.li/ads.php?md5=')) {
             logger.info('Resolving libgen.li ads.php link for direct download...');
-            const html = await httpGet(directLink, 'text', logger, 2, false);
+            const html = await httpGet(directLink, 'text', 2, false);
             const $ = cheerio.load(html);
             const getLink = $('a[href*="get.php"][href*="key="]').attr('href');
             if (getLink) {
@@ -740,7 +788,7 @@ export const resolveDirectDownloadLink = async (directLink: string, logger: type
                 logger.info(`Trying libgen.li ads.php for fiction download: ${libgenLiUrl}`);
                 
                 try {
-                    const html = await httpGet(libgenLiUrl, 'text', logger, 2, false);
+                    const html = await httpGet(libgenLiUrl, 'text', 2, false);
                     const $ = cheerio.load(html);
                     const getLink = $('a[href*="get.php"][href*="key="]').attr('href');
                     if (getLink) {
@@ -763,10 +811,10 @@ export const resolveDirectDownloadLink = async (directLink: string, logger: type
         let html;
         if (directLink.startsWith('http') && directLink.includes('libgen')) {
             const url = new URL(directLink);
-            html = await libgenAccessManager.get(url.pathname + url.search, 'text', logger);
+            html = await libgenAccessManager.get(url.pathname + url.search, 'text');
         } else {
             // Fallback to old logic for Anna's Archive or other domains
-            html = await httpGet(directLink, 'text', logger, 2, false);
+            html = await httpGet(directLink, 'text', 2, false);
         }
         const $ = cheerio.load(html);
         const finalLink = $('a[href*="get.php"]').attr('href');
@@ -811,7 +859,7 @@ class LibGenAccessManager {
     }
   }
 
-  async get(path: string, responseType: 'text' | 'json', logger: typeof log): Promise<any> {
+  async get(path: string, responseType: 'text' | 'json'): Promise<any> {
     // Try last successful first
     if (this.lastSuccessful.mirror) {
       try {
@@ -896,11 +944,11 @@ export async function getLibgenAccessInfo() {
 }
 
 // New function to test LibGen access with detailed status updates
-export async function testLibgenAccess(win: BrowserWindow, logger: typeof log): Promise<{ success: boolean; workingMirror: string | null; error: string | null }> {
+export async function testLibgenAccess(win: BrowserWindow): Promise<{ success: boolean; workingMirror: string | null; error: string | null }> {
   logger.info('Starting LibGen Fiction access test...');
   
   // Test the main fiction domain first
-  sendStatusUpdate(win, 'Connecting to LibGen Fiction...', logger);
+  sendStatusUpdate(win, 'Connecting to LibGen Fiction...');
   try {
     const response = await axios.get(`${API_URLS.LIBGEN_FICTION}/?q=test`, {
       timeout: 10000,
@@ -910,21 +958,21 @@ export async function testLibgenAccess(win: BrowserWindow, logger: typeof log): 
     });
     if (response.status === 200) {
       logger.info('Main LibGen Fiction domain is accessible');
-      sendStatusUpdate(win, 'Successfully connected to LibGen Fiction!', logger);
+      sendStatusUpdate(win, 'Successfully connected to LibGen Fiction!');
       libgenAccessManager.lastSuccessful = { mirror: API_URLS.LIBGEN_FICTION };
       libgenAccessManager.lastError = null;
       return { success: true, workingMirror: API_URLS.LIBGEN_FICTION, error: null };
     }
   } catch (error) {
     logger.warn('Main LibGen Fiction domain is not accessible, trying mirrors...');
-    sendStatusUpdate(win, 'Main domain unavailable, testing mirrors...', logger);
+    sendStatusUpdate(win, 'Main domain unavailable, testing mirrors...');
   }
 
   // Test each fiction mirror
   const mirrors = libgenAccessManager.mirrors;
   for (let i = 0; i < mirrors.length; i++) {
     const mirror = mirrors[i];
-    sendStatusUpdate(win, `Testing mirror ${i + 1}/${mirrors.length}: ${new URL(mirror).hostname}`, logger);
+    sendStatusUpdate(win, `Testing mirror ${i + 1}/${mirrors.length}: ${new URL(mirror).hostname}`);
     
     try {
       const response = await axios.get(`${mirror}/fiction/?q=test`, {
@@ -936,7 +984,7 @@ export async function testLibgenAccess(win: BrowserWindow, logger: typeof log): 
       
       if (response.status === 200) {
         logger.info(`Mirror ${mirror} is working`);
-        sendStatusUpdate(win, `Found working mirror: ${new URL(mirror).hostname}`, logger);
+        sendStatusUpdate(win, `Found working mirror: ${new URL(mirror).hostname}`);
         libgenAccessManager.lastSuccessful = { mirror };
         libgenAccessManager.lastError = null;
         return { success: true, workingMirror: mirror, error: null };
@@ -951,7 +999,7 @@ export async function testLibgenAccess(win: BrowserWindow, logger: typeof log): 
   // All mirrors failed
   const errorMsg = 'All LibGen Fiction mirrors are currently unavailable';
   logger.error(errorMsg);
-  sendStatusUpdate(win, errorMsg, logger);
+  sendStatusUpdate(win, errorMsg);
   libgenAccessManager.lastSuccessful = { mirror: null };
   return { success: false, workingMirror: null, error: errorMsg };
 }

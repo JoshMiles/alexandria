@@ -52,11 +52,29 @@ const I18nContext = createContext<I18nContextType>({
   availableLanguages,
 });
 
-// Translation function to get nested object values
-const getNestedValue = (obj: any, path: string): string => {
-  return path.split('.').reduce((current, key) => {
-    return current && current[key] !== undefined ? current[key] : path;
-  }, obj);
+// Enhanced fallback: Try selected language, then fallback to English
+const getNestedValue = (obj: any, path: string, fallbackObj?: any): string => {
+  const keys = path.split('.');
+  let current = obj;
+  for (const key of keys) {
+    if (current && current[key] !== undefined) {
+      current = current[key];
+    } else if (fallbackObj) {
+      // Try fallback (English)
+      let fallbackCurrent = fallbackObj;
+      for (const k of keys) {
+        if (fallbackCurrent && fallbackCurrent[k] !== undefined) {
+          fallbackCurrent = fallbackCurrent[k];
+        } else {
+          return path;
+        }
+      }
+      return typeof fallbackCurrent === 'string' ? fallbackCurrent : path;
+    } else {
+      return path;
+    }
+  }
+  return typeof current === 'string' ? current : path;
 };
 
 // Hook to use i18n
@@ -111,8 +129,8 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Translation function
   const t = (key: string): string => {
-    const value = getNestedValue(translations, key);
-    return typeof value === 'string' ? value : key;
+    // Always fallback to English if missing
+    return getNestedValue(translations, key, enTranslations);
   };
 
   // Set language function

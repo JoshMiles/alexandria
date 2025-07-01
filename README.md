@@ -26,7 +26,7 @@ Download the latest release for your platform:
 - **Modern UI** for searching and browsing LibGen
 - **DOI support** for finding sci-hub related articles
 - **Built-in Download Manager** for easy, reliable downloads
-- **Proxy Support** to help you access LibGen even if it’s blocked in your region
+- **Proxy Support** to help you access LibGen even if it's blocked in your region
 
 ---
 
@@ -34,13 +34,36 @@ Download the latest release for your platform:
 
 Clone the repository:
 
-```git clone https://github.com/JoshMiles/alexandria.git ```
-```cd alexandria```
+```sh
+git clone https://github.com/JoshMiles/alexandria.git
+cd alexandria
+```
 
-Run the project:
+Install dependencies:
 
-```npm start```
+```sh
+npm install
+```
 
+Build the project:
+
+```sh
+npm run build
+```
+
+Package the app for distribution (using [Hydraulic Conveyor](https://conveyor.hydraulic.dev/)):
+
+```sh
+npm run build:conveyor
+```
+
+This will generate installers for Windows, macOS, and Linux in the `out/` directory.
+
+---
+
+## 🔄 Auto-Updates
+
+Alexandria now uses [Hydraulic Conveyor](https://conveyor.hydraulic.dev/) for packaging and auto-updates. Updates are distributed via [GitHub Releases](https://github.com/JoshMiles/alexandria/releases). The app will automatically check for and download updates from the latest release.
 
 ---
 

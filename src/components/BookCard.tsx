@@ -36,11 +36,13 @@ const BookCard: React.FC<BookCardProps> = React.memo(({
     // Fallback to unknown cover
     return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDEyMCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTgwIiBmaWxsPSIjM0M0QzU2Ii8+Cjx0ZXh0IHg9IjYwIiB5PSI5MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TG9hZGluZy4uLjwvdGV4dD4KPC9zdmc+';
   });
+  const [imageError, setImageError] = useState(false);
 
   // Update cover URL when book.thumbnail changes
   useEffect(() => {
     if (book.thumbnail) {
       setCoverUrl(book.thumbnail);
+      setImageError(false);
     }
   }, [book.thumbnail]);
   const detailsRef = useRef<HTMLDivElement>(null);
@@ -51,7 +53,7 @@ const BookCard: React.FC<BookCardProps> = React.memo(({
       setCoverUrl(book.thumbnail);
     } else {
       // Fallback to placeholder
-      setCoverUrl('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDEyMCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTgwIiBmaWxsPSIjM0M0QzU2Ii8+Cjx0ZXh0IHg9IjYwIiB5PSI5MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TG9hZGluZy4uLjwvdGV4dD4KPC9zdmc+');
+      setImageError(true);
     }
   }, [book.thumbnail, coverUrl]);
 
@@ -145,17 +147,24 @@ const BookCard: React.FC<BookCardProps> = React.memo(({
         className={isExpanded ? 'expanded-book-cover' : 'book-cover'} 
         onClick={handleToggleExpand}
       >
-        <LazyLoadImage
-          alt={book.title}
-          src={coverUrl}
-          onError={handleImageError}
-          width="100%"
-          height="100%"
-          style={{ objectFit: 'cover' }}
-          effect="blur"
-          threshold={100}
-          placeholderSrc="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDEyMCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTgwIiBmaWxsPSIjM0M0QzU2Ii8+Cjx0ZXh0IHg9IjYwIiB5PSI5MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TG9hZGluZy4uLjwvdGV4dD4KPC9zdmc+"
-        />
+        {!imageError ? (
+          <LazyLoadImage
+            alt={book.title}
+            src={coverUrl}
+            onError={handleImageError}
+            width="100%"
+            height="100%"
+            style={{ objectFit: 'cover' }}
+            effect="blur"
+            threshold={100}
+            placeholderSrc="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDEyMCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTgwIiBmaWxsPSIjM0M0QzU2Ii8+Cjx0ZXh0IHg9IjYwIiB5PSI5MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TG9hZGluZy4uLjwvdGV4dD4KPC9zdmc+"
+          />
+        ) : (
+          <div className="cover-fallback">
+            <div className="cover-fallback-title">{book.title}</div>
+            <div className="cover-fallback-author">{book.author}</div>
+          </div>
+        )}
       </div>
       
       <div className="book-info">
@@ -164,6 +173,7 @@ const BookCard: React.FC<BookCardProps> = React.memo(({
         <div className="chip-container">
           <span className="chip">{book.language}</span>
           <span className="chip">{book.extension}</span>
+          {book.size && <span className="chip size-chip">{book.size}</span>}
         </div>
       </div>
       

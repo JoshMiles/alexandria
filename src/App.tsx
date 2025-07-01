@@ -60,20 +60,24 @@ const SettingsButtonOverlay: React.FC<{ width: number, onClick: () => void }> = 
 
 const AppContent = () => {
   const { libgenUrl } = useTheme();
-  const { t } = useI18n();
+  const { t, language: appLanguage } = useI18n();
   const { downloads, handleDownload, handleCancelDownload, handleOpenFile, handleOpenFolder, handleClearDownloads } = useDownloads();
   
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [randomFact, setRandomFact] = useState('');
   const [randomFactAuthor, setRandomFactAuthor] = useState('');
-  const [showAllFiles, setShowAllFiles] = useState(false);
+  const [showOnlyIsbn, setShowOnlyIsbn] = useState(false);
   const [searchStatus, setSearchStatus] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [sidebarWidth, setSidebarWidth] = useState(350);
   const sidebarResizableRef = useRef<any>(null);
+
+  // Add state for filters
+  const [languageFilter, setLanguageFilter] = useState<string>('');
+  const [fileTypeFilter, setFileTypeFilter] = useState<string>('');
 
   const handleToggleSettings = useCallback(() => {
     setShowSettings(prev => !prev);
@@ -139,10 +143,42 @@ const AppContent = () => {
     setQuery(e.target.value);
   }, [setQuery]);
 
-  // Filter results based on showAllFiles
+  // Compute available languages and file types from results
+  const availableLanguages = useMemo(() => {
+    const langs = new Set<string>();
+    unfilteredResults.forEach(book => {
+      if (book.language) langs.add(book.language);
+    });
+    return Array.from(langs).sort();
+  }, [unfilteredResults]);
+
+  const availableFileTypes = useMemo(() => {
+    const types = new Set<string>();
+    unfilteredResults.forEach(book => {
+      if (book.extension) types.add(book.extension);
+    });
+    return Array.from(types).sort();
+  }, [unfilteredResults]);
+
+  // Filter and sort results based on showOnlyIsbn, filters, and app language
   const filteredResults = useMemo(() => {
-    return showAllFiles ? unfilteredResults : unfilteredResults.filter(book => book.isbn || book.asin);
-  }, [showAllFiles, unfilteredResults]);
+    let results = showOnlyIsbn ? unfilteredResults.filter(book => book.isbn) : unfilteredResults;
+    if (languageFilter) {
+      results = results.filter(book => book.language === languageFilter);
+    }
+    if (fileTypeFilter) {
+      results = results.filter(book => book.extension === fileTypeFilter);
+    }
+    // Sort by app language first
+    if (appLanguage) {
+      const langLower = appLanguage.toLowerCase();
+      results = [
+        ...results.filter(book => (book.language || '').toLowerCase() === langLower),
+        ...results.filter(book => (book.language || '').toLowerCase() !== langLower)
+      ];
+    }
+    return results;
+  }, [showOnlyIsbn, unfilteredResults, languageFilter, fileTypeFilter, appLanguage]);
 
   // Add client IDs to results
   const resultsWithIds = useMemo(() => {
@@ -236,7 +272,7 @@ const AppContent = () => {
     return () => observer.disconnect();
   }, []);
 
-  const showWelcomeMessage = !loading && !error && !noResults && resultsWithIds.length === 0 && !doiResult;
+  const showWelcomeMessage = !loading && !error && !noResults && resultsWithIds.length === 0 && !doiResult && !(languageFilter || fileTypeFilter);
 
   return (
     <>
@@ -298,26 +334,60 @@ const AppContent = () => {
                 </div>
               )}
               
-              {(resultsWithIds.length > 0 || doiResult) && (
+              {(resultsWithIds.length > 0 || doiResult || languageFilter || fileTypeFilter) && (
                 <div className="search-results-header">
-                  <button className="back-button" onClick={handleBack}>
-                    Back
-                  </button>
-                  <h2>{t('app.searchResults')}</h2>
+                  <div className="search-results-header-left">
+                    <h2>
+                      {t('app.searchResults')}
+                      {resultsWithIds.length > 0 && (
+                        <span className="results-count"> ({resultsWithIds.length} {t('app.found')})</span>
+                      )}
+                    </h2>
+                  </div>
                   {!isDoiSearch && (
-                    <div className="toggle-container">
-                      <label className="toggle-switch">
-                        <input
-                          type="checkbox"
-                          checked={showAllFiles}
-                          onChange={() => setShowAllFiles(!showAllFiles)}
-                        />
-                        <span className="slider"></span>
-                      </label>
-                                              <span>{t('app.showAllFiles')}</span>
+                    <div className="search-results-header-right">
+                      <div className="toggle-container">
+                        <label className="toggle-switch">
+                          <input
+                            type="checkbox"
+                            checked={showOnlyIsbn}
+                            onChange={() => setShowOnlyIsbn(!showOnlyIsbn)}
+                          />
+                          <span className="slider"></span>
+                        </label>
+                        <span>Show Only ISBN Books</span>
+                      </div>
+                      {(availableLanguages.length > 0 || availableFileTypes.length > 0) && (
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                          <select
+                            value={languageFilter}
+                            onChange={e => setLanguageFilter(e.target.value)}
+                            style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border)' }}
+                          >
+                            <option value="">All Languages</option>
+                            {availableLanguages.map(lang => (
+                              <option key={lang} value={lang}>{lang}</option>
+                            ))}
+                          </select>
+                          <select
+                            value={fileTypeFilter}
+                            onChange={e => setFileTypeFilter(e.target.value)}
+                            style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border)' }}
+                          >
+                            <option value="">All File Types</option>
+                            {availableFileTypes.map(type => (
+                              <option key={type} value={type}>{type}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
+              )}
+              {/* Show no results with filter message if filters are active and no results */}
+              {((languageFilter || fileTypeFilter) && resultsWithIds.length === 0 && !doiResult) && (
+                <div className="no-results-message">{t('app.noResultsWithFilter')}</div>
               )}
               
               {doiResult && <DoiResult book={doiResult} onDownload={handleDownload} />}

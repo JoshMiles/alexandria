@@ -7,15 +7,18 @@
     "searching": "جاري البحث...",
     "searchResults": "نتائج البحث",
     "showAllFiles": "عرض جميع الملفات",
+    "showOnlyIsbn": "عرض كتب برقم ISBN فقط",
     "noResults": "لم يتم العثور على نتائج",
     "loading": "جاري التحميل...",
     "error": "خطأ",
     "success": "نجح",
-    "info": "معلومات"
+    "info": "معلومات",
+    "found": "تم العثور عليها"
   },
   "settings": {
     "title": "الإعدادات",
     "theme": "المظهر",
+    "themeAndAccent": "المظهر والتمييز",
     "dark": "داكن",
     "light": "فاتح",
     "accentColors": "ألوان التمييز",

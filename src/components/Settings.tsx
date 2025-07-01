@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useI18n } from '../contexts/I18nContext';
 import './Settings.css';
-import { FiGlobe, FiPlus, FiX, FiZap } from 'react-icons/fi';
+import { FiGlobe, FiPlus, FiX, FiZap, FiInfo } from 'react-icons/fi';
+import LiveLogViewer from './LiveLogViewer';
 
 interface SettingsProps {
   onClose: () => void;
@@ -18,74 +19,95 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
     setDarkAccent,
     downloadButtonColor,
     setDownloadButtonColor,
-    libgenUrl,
-    setLibgenUrl,
     downloadLocation,
     setDownloadLocation,
     resetToDefaults,
   } = useTheme();
-  
   const { t, language, setLanguage, availableLanguages } = useI18n();
-
   const [version, setVersion] = useState('');
-  const [libgenAccessInfo, setLibgenAccessInfo] = useState<{ mirrors: string[]; proxies: string[]; currentMethod: { proxy: string | null; mirror: string | null } | null; lastError: string | null } | null>(null);
+  const [libgenAccessInfo, setLibgenAccessInfo] = useState<any>(null);
   const [resettingAccess, setResettingAccess] = useState(false);
   const [newMirror, setNewMirror] = useState('');
   const [testingAccess, setTestingAccess] = useState(false);
 
-  const socks5Regex = /^socks5:\/\/[\d.]+:\d{2,5}$/;
+  // Theme customizer variables and helpers (moved inside component for access to t and theme)
+  const THEME_VARIABLES = [
+    { key: 'background', label: 'Background' },
+    { key: 'background-light', label: 'Background Light' },
+    { key: 'background-lighter', label: 'Background Lighter' },
+    { key: 'foreground', label: 'Foreground' },
+    { key: 'foreground-dark', label: 'Foreground Dark' },
+    { key: 'accent', label: 'Accent' },
+    { key: 'accent-hover', label: 'Accent Hover' },
+    { key: 'accent-glow', label: 'Accent Glow' },
+    { key: 'border', label: 'Border' },
+    { key: 'border-light', label: 'Border Light' },
+    { key: 'download-button-color', label: 'Download Button' },
+    { key: 'download-button-hover-color', label: 'Download Button Hover' },
+    { key: 'success', label: 'Success' },
+    { key: 'error', label: 'Error' },
+  ];
+
+  const THEME_MODES = [
+    { key: 'dark', label: t('settings.dark') },
+    { key: 'light', label: t('settings.light') },
+  ];
+
+  const getThemeVar = (mode: string, variable: string) => {
+    const root = document.documentElement;
+    if (mode === theme) {
+      return getComputedStyle(root).getPropertyValue(`--${variable}`)?.trim() || '';
+    } else {
+      const temp = document.createElement('div');
+      temp.style.display = 'none';
+      temp.setAttribute('data-theme', mode);
+      document.body.appendChild(temp);
+      const value = getComputedStyle(temp).getPropertyValue(`--${variable}`)?.trim() || '';
+      document.body.removeChild(temp);
+      return value;
+    }
+  };
+
+  const setThemeVar = (mode: string, variable: string, value: string) => {
+    const storageKey = `${mode}-${variable}`;
+    localStorage.setItem(storageKey, value);
+    if (mode === theme) {
+      document.documentElement.style.setProperty(`--${variable}`, value);
+    }
+  };
+
+  const resetThemeVars = (mode: string) => {
+    THEME_VARIABLES.forEach(({ key }) => {
+      const storageKey = `${mode}-${key}`;
+      localStorage.removeItem(storageKey);
+    });
+    window.location.reload();
+  };
 
   useEffect(() => {
-    const fetchVersion = async () => {
-      const appVersion = await window.electron.getVersion();
-      setVersion(appVersion);
-    };
-    fetchVersion();
-    // Fetch LibGen access info
-    window.electron.getLibgenAccessInfo().then((info) => setLibgenAccessInfo(normalizeAccessInfo(info)));
+    window.electron.getVersion().then(setVersion);
+    window.electron.getLibgenAccessInfo().then(setLibgenAccessInfo);
   }, []);
-
-  // Helper to normalize currentMethod
-  function normalizeAccessInfo(info: any): typeof libgenAccessInfo {
-    if (!info) return info;
-    if (typeof info.currentMethod === 'string' && info.currentMethod) {
-      // Try to guess if it's a proxy or mirror
-      const isProxy = info.proxies && info.proxies.includes(info.currentMethod);
-      const isMirror = info.mirrors && info.mirrors.includes(info.currentMethod);
-      return {
-        ...info,
-        currentMethod: isProxy
-          ? { proxy: info.currentMethod, mirror: null }
-          : isMirror
-          ? { proxy: null, mirror: info.currentMethod }
-          : { proxy: null, mirror: null },
-      };
-    }
-    if (info.currentMethod === null || typeof info.currentMethod === 'object') {
-      return info;
-    }
-    return { ...info, currentMethod: { proxy: null, mirror: null } };
-  }
 
   const handleResetAccess = async () => {
     setResettingAccess(true);
     await window.electron.resetLibgenAccessMethod();
     const info = await window.electron.getLibgenAccessInfo();
-    setLibgenAccessInfo(normalizeAccessInfo(info));
+    setLibgenAccessInfo(info);
     setResettingAccess(false);
   };
 
   const handleAddMirror = async () => {
     if (newMirror.trim()) {
       const info = await window.electron.addLibgenMirror(newMirror.trim());
-      setLibgenAccessInfo(normalizeAccessInfo(info));
+      setLibgenAccessInfo(info);
       setNewMirror('');
     }
   };
 
   const handleRemoveMirror = async (url: string) => {
     const info = await window.electron.removeLibgenMirror(url);
-    setLibgenAccessInfo(normalizeAccessInfo(info));
+    setLibgenAccessInfo(info);
   };
 
   const handleTestAccess = async () => {
@@ -93,11 +115,11 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
     try {
       const result = await window.electron.testLibgenAccess();
       if (result.success) {
-        // Refresh the access info to show the working mirror
         const info = await window.electron.getLibgenAccessInfo();
-        setLibgenAccessInfo(normalizeAccessInfo(info));
+        setLibgenAccessInfo(info);
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error testing LibGen access:', error);
     } finally {
       setTestingAccess(false);
@@ -105,155 +127,156 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
   };
 
   return (
-    <div className="settings-page">
-      <div className="settings-header">
-        <button className="back-button" onClick={onClose}>
-          {t('app.back')}
-        </button>
-        <h1>{t('settings.title')}</h1>
-      </div>
-      <div className="setting-section">
-        <h2>{t('settings.theme')}</h2>
-        <div className="theme-options">
-          <label>
-            <input
-              type="radio"
-              name="theme"
-              value="dark"
-              checked={theme === 'dark'}
-              onChange={(e) => setTheme(e.target.value)}
-            />
-            <div className="theme-preview dark-preview">{t('settings.dark')}</div>
-          </label>
-          <label>
-            <input
-              type="radio"
-              name="theme"
-              value="light"
-              checked={theme === 'light'}
-              onChange={(e) => setTheme(e.target.value)}
-            />
-            <div className="theme-preview light-preview">{t('settings.light')}</div>
-          </label>
+    <div className="settings-root">
+      <div className="settings-grid-container">
+        <div className="settings-header-row">
+          <button className="back-button top-left" onClick={onClose}>{t('app.back')}</button>
+          <h1 className="settings-header-title">{t('settings.title')}</h1>
         </div>
-      </div>
-      <div className="setting-section">
-        <h2>{t('settings.accentColors')}</h2>
-        <div className="color-picker-container">
-          <div className="color-picker">
-            <label htmlFor="light-accent-picker">{t('settings.lightMode')}</label>
-            <input
-              type="color"
-              id="light-accent-picker"
-              value={lightAccent}
-              onChange={(e) => setLightAccent(e.target.value)}
-            />
-          </div>
-          <div className="color-picker">
-            <label htmlFor="dark-accent-picker">{t('settings.darkMode')}</label>
-            <input
-              type="color"
-              id="dark-accent-picker"
-              value={darkAccent}
-              onChange={(e) => setDarkAccent(e.target.value)}
-            />
-          </div>
-          <div className="color-picker">
-            <label htmlFor="download-button-color-picker">{t('settings.downloadButton')}</label>
-            <input
-              type="color"
-              id="download-button-color-picker"
-              value={downloadButtonColor}
-              onChange={(e) => setDownloadButtonColor(e.target.value)}
-            />
-          </div>
-        </div>
-      </div>
-      <div className="setting-section">
-        <h2>{t('settings.downloads')}</h2>
-        <div className="setting-row">
-          <label htmlFor="download-location">{t('settings.defaultDownloadLocation')}</label>
-          <button onClick={() => setDownloadLocation()}>
-            {downloadLocation ? downloadLocation : t('settings.selectFolder')}
-          </button>
-        </div>
-      </div>
-      
-      <div className="setting-section">
-        <h2>{t('settings.language')}</h2>
-        <div className="language-options">
-          {Object.entries(availableLanguages).map(([code, lang]) => (
-            <label key={code} className="language-option">
-              <input
-                type="radio"
-                name="language"
-                value={code}
-                checked={language === code}
-                onChange={(e) => setLanguage(e.target.value)}
-              />
-              <div className="language-preview">
-                <span className="language-flag">{lang.flag}</span>
-                <span className="language-name">{lang.name}</span>
-              </div>
-            </label>
-          ))}
-        </div>
-      </div>
-      <div className="setting-section libgen-access-card">
-        <div className="libgen-access-header">
-          <FiGlobe /> {t('libgen.access')}
-        </div>
-        {libgenAccessInfo ? (
-          <>
-            <div className="libgen-access-status-row">
-              <span><strong>{t('libgen.currentMirror')}:</strong> <span className="current-method">{libgenAccessInfo.currentMethod && libgenAccessInfo.currentMethod.mirror ? libgenAccessInfo.currentMethod.mirror : t('libgen.autoDetect')}</span></span>
-              <span><strong>{t('libgen.lastError')}:</strong> <span className="last-error">{libgenAccessInfo.lastError || t('libgen.none')}</span></span>
+        <div className="settings-grid">
+          {/* Theme & Accent */}
+          <div className="settings-panel settings-logger-panel">
+            <div className="panel-header">
+              <span className="panel-title">{t('settings.themeAndAccent')}</span>
+              <span className="panel-tooltip" title="Change the app's theme and accent colors."><FiInfo /></span>
             </div>
-            <div className="libgen-access-row">
-              <strong>{t('libgen.mirrors')}:</strong>
-              {libgenAccessInfo.mirrors.map((mirror) => {
-                const isCurrent = libgenAccessInfo.currentMethod && libgenAccessInfo.currentMethod.mirror === mirror;
-                return (
-                  <span
-                    key={mirror}
-                    className={'libgen-chip' + (isCurrent ? ' current' : '')}
-                  >
-                    {mirror}
-                    <button className="remove-btn" title={t('libgen.remove')} onClick={() => handleRemoveMirror(mirror)}><FiX /></button>
-                  </span>
-                );
-              })}
+            <div className="theme-options">
+              {THEME_MODES.map(({ key, label }) => (
+                <label key={key}>
+                  <input type="radio" name="theme" value={key} checked={theme === key} onChange={e => setTheme(e.target.value)} />
+                  <div className={`theme-preview ${key}-preview`}>{label}</div>
+                </label>
+              ))}
             </div>
-            <div className="libgen-access-add-row">
-              <input
-                type="text"
-                placeholder={t('libgen.addMirrorPlaceholder')}
-                value={newMirror}
-                onChange={(e) => setNewMirror(e.target.value)}
-              />
-              <button onClick={handleAddMirror} title={t('libgen.addMirror')}><FiPlus /></button>
+            <div className="theme-divider" />
+            <div className="theme-customizer-section">
+              {THEME_MODES.map(({ key: mode, label }) => (
+                <div key={mode} className="theme-card">
+                  <div className="theme-card-header">{label} Theme</div>
+                  <div className="theme-card-grid">
+                    {THEME_VARIABLES.map(({ key: varKey, label: varLabel }) => (
+                      <div className="theme-color-group" key={varKey}>
+                        <label htmlFor={`${mode}-${varKey}-picker`} className="theme-color-label">{varLabel}</label>
+                        <input
+                          type="color"
+                          id={`${mode}-${varKey}-picker`}
+                          value={getThemeVar(mode, varKey) || '#000000'}
+                          onChange={e => setThemeVar(mode, varKey, e.target.value)}
+                          className="theme-color-input"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <button className="reset-button theme-reset-btn" onClick={() => resetThemeVars(mode)}>
+                    Reset {label} Theme to Defaults
+                  </button>
+                </div>
+              ))}
             </div>
-            <div className="libgen-access-divider" />
-            <div className="libgen-access-actions">
-              <button className="reset-button" onClick={handleTestAccess} disabled={testingAccess}>
-                {testingAccess ? t('libgen.testing') : t('libgen.testAccess')}
-              </button>
-              <button className="reset-button" onClick={handleResetAccess} disabled={resettingAccess}>
-                {resettingAccess ? t('libgen.resetting') : t('libgen.resetAccessMethod')}
+          </div>
+          {/* Language */}
+          <div className="settings-panel settings-grid-item">
+            <div className="panel-header">
+              <span className="panel-title">{t('settings.language')}</span>
+              <span className="panel-tooltip" title="Change the app's language."><FiInfo /></span>
+            </div>
+            <select
+              value={language}
+              onChange={e => setLanguage(e.target.value)}
+              className="settings-language-dropdown"
+            >
+              {Object.entries(availableLanguages).map(([code, lang]) => (
+                <option key={code} value={code}>{lang.flag} {lang.name}</option>
+              ))}
+            </select>
+          </div>
+          {/* Downloads */}
+          <div className="settings-panel settings-grid-item">
+            <div className="panel-header">
+              <span className="panel-title">{t('settings.downloads')}</span>
+              <span className="panel-tooltip" title="Set your default download location."><FiInfo /></span>
+            </div>
+            <div className="setting-row">
+              <label htmlFor="download-location">{t('settings.defaultDownloadLocation')}</label>
+              <button onClick={() => setDownloadLocation()}>
+                {downloadLocation ? downloadLocation : t('settings.selectFolder')}
               </button>
             </div>
-          </>
-        ) : (
-          <p>{t('libgen.loadingAccessInfo')}</p>
-        )}
-      </div>
-      <div className="setting-section">
-        <button className="reset-button" onClick={resetToDefaults}>
-          {t('settings.resetToDefaults')}
-        </button>
-      </div>
-      <div className="setting-section version-info">
-        <p>{t('settings.version')}: {version}</p>
+          </div>
+          {/* LibGen Access */}
+          <div className="settings-panel settings-grid-item libgen-access-panel">
+            <div className="panel-header">
+              <span className="panel-title">{t('libgen.access')}</span>
+              <span className="panel-tooltip" title="Manage LibGen mirrors and access."><FiInfo /></span>
+            </div>
+            {libgenAccessInfo ? (
+              <>
+                <div className="libgen-access-status-row">
+                  <span><strong>{t('libgen.currentMirror')}:</strong> <span className="current-method">{libgenAccessInfo.currentMethod && libgenAccessInfo.currentMethod.mirror ? libgenAccessInfo.currentMethod.mirror : t('libgen.autoDetect')}</span></span>
+                  <span><strong>{t('libgen.lastError')}:</strong> <span className="last-error">{libgenAccessInfo.lastError || t('libgen.none')}</span></span>
+                </div>
+                <div className="libgen-access-row">
+                  <strong>{t('libgen.mirrors')}:</strong>
+                  {libgenAccessInfo.mirrors.map((mirror: string) => {
+                    const isCurrent = libgenAccessInfo.currentMethod && libgenAccessInfo.currentMethod.mirror === mirror;
+                    return (
+                      <span key={mirror} className={'libgen-chip' + (isCurrent ? ' current' : '')}>
+                        {mirror}
+                        <button className="remove-btn" title={t('libgen.remove')} onClick={() => handleRemoveMirror(mirror)}><FiX /></button>
+                      </span>
+                    );
+                  })}
+                </div>
+                <div className="libgen-access-add-row">
+                  <input type="text" placeholder={t('libgen.addMirrorPlaceholder')} value={newMirror} onChange={e => setNewMirror(e.target.value)} />
+                  <button onClick={handleAddMirror} title={t('libgen.addMirror')}><FiPlus /></button>
+                </div>
+                <div className="libgen-access-divider" />
+                <div className="libgen-access-actions">
+                  <button className="reset-button" onClick={handleTestAccess} disabled={testingAccess}>
+                    {testingAccess ? t('libgen.testing') : t('libgen.testAccess')}
+                  </button>
+                  <button className="reset-button" onClick={handleResetAccess} disabled={resettingAccess}>
+                    {resettingAccess ? t('libgen.resetting') : t('libgen.resetAccessMethod')}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <p>{t('libgen.loadingAccessInfo')}</p>
+            )}
+          </div>
+          {/* Logger (full width) */}
+          <div className="settings-panel settings-logger-panel">
+            <div className="panel-header">
+              <span className="panel-title">Logs</span>
+              <span className="panel-tooltip" title="View and filter the app's logs."><FiInfo /></span>
+            </div>
+            <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginBottom: 16 }}>
+              <button className="reset-button" style={{ flex: 'none' }} onClick={() => window.electron.openLogsFolder()}>
+                Open Logs Folder
+              </button>
+            </div>
+            <LiveLogViewer />
+          </div>
+          {/* Reset to Defaults */}
+          <div className="settings-panel settings-grid-item">
+            <div className="panel-header">
+              <span className="panel-title">{t('settings.resetToDefaults')}</span>
+              <span className="panel-tooltip" title="Reset all settings to their default values."><FiInfo /></span>
+            </div>
+            <button className="reset-button" onClick={resetToDefaults}>
+              {t('settings.resetToDefaults')}
+            </button>
+          </div>
+          {/* Version Info */}
+          <div className="settings-panel settings-grid-item">
+            <div className="panel-header">
+              <span className="panel-title">{t('settings.version')}</span>
+              <span className="panel-tooltip" title="App version."><FiInfo /></span>
+            </div>
+            <p>{version}</p>
+          </div>
+        </div>
       </div>
     </div>
   );

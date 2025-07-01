@@ -7,15 +7,18 @@
     "searching": "搜索中...",
     "searchResults": "搜索结果",
     "showAllFiles": "显示所有文件",
+    "showOnlyIsbn": "仅显示有ISBN的书籍",
     "noResults": "未找到结果",
     "loading": "加载中...",
     "error": "错误",
     "success": "成功",
-    "info": "信息"
+    "info": "信息",
+    "found": "找到"
   },
   "settings": {
     "title": "设置",
     "theme": "主题",
+    "themeAndAccent": "主题和强调色",
     "dark": "深色",
     "light": "浅色",
     "accentColors": "强调色",

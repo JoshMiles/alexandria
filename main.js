@@ -1,13 +1,10 @@
 const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
 const path = require('path');
-const log = require('electron-log');
+const logger = require('./backend/logger.js');
 const fs = require('fs');
 const { pipeline } = require('stream');
 const os = require('os');
 const https = require('https');
-let Store;
-let got;
-const { autoUpdater } = require('electron-updater');
 const { search, getDownloadLinks, resolveDirectDownloadLink, getSciHubDownloadLink, getLibgenAccessInfo, resetLibgenAccessMethod, addLibgenMirror, removeLibgenMirror, testLibgenAccess } = require('./dist/backend.js');
 
 let store;
@@ -15,13 +12,10 @@ let downloadItems = {};
 let mainWindow;
 let startupWindow;
 
-log.transports.file.level = 'info';
-log.info('App starting...');
-
-autoUpdater.logger = log;
+logger.info('App starting...');
 
 function createStartupWindow() {
-  log.info('Creating startup window.');
+  logger.info('Creating startup window.');
   startupWindow = new BrowserWindow({
     width: 400,
     height: 200,
@@ -34,13 +28,13 @@ function createStartupWindow() {
   });
   startupWindow.loadFile('dist/startup.html');
   startupWindow.on('closed', () => {
-    log.info('Startup window closed.');
+    logger.info('Startup window closed.');
     startupWindow = null;
   });
 }
 
 function createWindow() {
-  log.info('Creating main window.');
+  logger.info('Creating main window.');
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -63,13 +57,13 @@ function createWindow() {
   mainWindow.maximize();
   
   mainWindow.on('closed', () => {
-    log.info('Main window closed.');
+    logger.info('Main window closed.');
     mainWindow = null;
   });
 }
 
 app.whenReady().then(async () => {
-  log.info('App is ready.');
+  logger.info('App is ready.');
   got = (await import('got')).default;
   Store = (await import('electron-store')).default;
   store = new Store();
@@ -82,98 +76,46 @@ app.whenReady().then(async () => {
 
   createStartupWindow();
 
-  autoUpdater.on('checking-for-update', () => {
-    startupWindow.webContents.send('update-message', 'Checking for updates...');
-  });
-
-  autoUpdater.on('update-available', (info) => {
-    startupWindow.webContents.send('update-message', `Update available: ${info.version}`);
-  });
-
-  autoUpdater.on('update-not-available', async () => {
-    startupWindow.webContents.send('update-message', 'No updates available.');
-    // Start LibGen access check after update check
-    setTimeout(async () => {
-      if (startupWindow) {
-        log.info('Performing LibGen access check...');
-        try {
-          const result = await testLibgenAccess(startupWindow, log);
-          if (result.success) {
-            log.info(`LibGen access check successful. Working mirror: ${result.workingMirror}`);
-          } else {
-            log.warn(`LibGen access check failed: ${result.error}`);
-          }
-        } catch (error) {
-          log.error('Error during LibGen access check:', error);
-        }
-        
-        // Close startup window and create main window
-        setTimeout(() => {
-          if (startupWindow) {
-            startupWindow.close();
-          }
-          createWindow();
-        }, 1000);
-      }
-    }, 1000);
-  });
-
-  autoUpdater.on('error', async (err) => {
-    startupWindow.webContents.send('update-message', `Error in auto-updater: ${err.toString()}`);
-    // Start LibGen access check even if update check failed
-    setTimeout(async () => {
-      if (startupWindow) {
-        log.info('Performing LibGen access check...');
-        try {
-          const result = await testLibgenAccess(startupWindow, log);
-          if (result.success) {
-            log.info(`LibGen access check successful. Working mirror: ${result.workingMirror}`);
-          } else {
-            log.warn(`LibGen access check failed: ${result.error}`);
-          }
-        } catch (error) {
-          log.error('Error during LibGen access check:', error);
-        }
-        
-        // Close startup window and create main window
-        setTimeout(() => {
-          if (startupWindow) {
-            startupWindow.close();
-          }
-          createWindow();
-        }, 1000);
-      }
-    }, 1000);
-  });
-
-  autoUpdater.on('download-progress', (progressObj) => {
-    startupWindow.webContents.send('update-message', `Downloading update: ${Math.round(progressObj.percent)}%`);
-  });
-
-  autoUpdater.on('update-downloaded', (info) => {
-    startupWindow.webContents.send('update-message', `Update downloaded: ${info.version}. Restarting...`);
-    autoUpdater.quitAndInstall();
-  });
-
+  // No custom update event handling; let Conveyor handle updates natively.
   if (app.isPackaged) {
-    autoUpdater.checkForUpdates();
+    // Optionally, you can show a message that updates are being checked by Conveyor.
+    // Otherwise, proceed directly to LibGen access check after a short delay.
+    setTimeout(async () => {
+      if (startupWindow) {
+        logger.info('Performing LibGen access check...');
+        try {
+          const result = await testLibgenAccess(startupWindow, logger);
+          if (result.success) {
+            logger.info(`LibGen access check successful. Working mirror: ${result.workingMirror}`);
+          } else {
+            logger.warn(`LibGen access check failed: ${result.error}`);
+          }
+        } catch (error) {
+          logger.error('Error during LibGen access check:', error);
+        }
+        setTimeout(() => {
+          if (startupWindow) {
+            startupWindow.close();
+          }
+          createWindow();
+        }, 1000);
+      }
+    }, 2000); // Give Conveyor a moment to check for updates
   } else {
     // In development, skip update check but still do LibGen check
     setTimeout(async () => {
       if (startupWindow) {
-        log.info('Performing LibGen access check...');
+        logger.info('Performing LibGen access check...');
         try {
-          const result = await testLibgenAccess(startupWindow, log);
+          const result = await testLibgenAccess(startupWindow, logger);
           if (result.success) {
-            log.info(`LibGen access check successful. Working mirror: ${result.workingMirror}`);
+            logger.info(`LibGen access check successful. Working mirror: ${result.workingMirror}`);
           } else {
-            log.warn(`LibGen access check failed: ${result.error}`);
+            logger.warn(`LibGen access check failed: ${result.error}`);
           }
         } catch (error) {
-          log.error('Error during LibGen access check:', error);
+          logger.error('Error during LibGen access check:', error);
         }
-        
-        // Close startup window and create main window
         setTimeout(() => {
           if (startupWindow) {
             startupWindow.close();
@@ -186,20 +128,20 @@ app.whenReady().then(async () => {
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      log.info('App activated, creating new window.');
+      logger.info('App activated, creating new window.');
       createWindow();
     }
   });
 });
 
 app.on('window-all-closed', () => {
-  log.info('All windows closed, quitting application.');
+  logger.info('All windows closed, quitting application.');
   app.quit();
 });
 
 ipcMain.on('minimize', () => {
   if (mainWindow) {
-    log.info('Minimizing main window.');
+    logger.info('Minimizing main window.');
     mainWindow.minimize();
   }
 });
@@ -207,10 +149,10 @@ ipcMain.on('minimize', () => {
 ipcMain.on('maximize', () => {
   if (mainWindow) {
     if (mainWindow.isMaximized()) {
-      log.info('Unmaximizing main window.');
+      logger.info('Unmaximizing main window.');
       mainWindow.unmaximize();
     } else {
-      log.info('Maximizing main window.');
+      logger.info('Maximizing main window.');
       mainWindow.maximize();
     }
   }
@@ -218,21 +160,21 @@ ipcMain.on('maximize', () => {
 
 ipcMain.on('close', () => {
   if (mainWindow) {
-    log.info('Closing main window.');
+    logger.info('Closing main window.');
     mainWindow.close();
   }
 });
 
 ipcMain.handle('search', async (event, query) => {
-  log.info(`Received search request for query: "${query}"`);
+  logger.info(`Received search request for query: "${query}"`);
   const win = BrowserWindow.fromWebContents(event.sender);
-  const results = await search(win, query, log);
-  log.info(`Search for "${query}" returned ${results.length} results.`);
+  const results = await search(win, query, logger);
+  logger.info(`Search for "${query}" returned ${results.length} results.`);
   return results;
 });
 
 ipcMain.handle('download', async (event, { book }) => {
-  log.info(`Download request for book: "${book.title}" (ID: ${book.client_id})`);
+  logger.info(`Download request for book: "${book.title}" (ID: ${book.client_id})`);
   const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
   const downloadsPath = app.getPath('downloads');
   const rawFileName = `${book.title} - ${book.author} (${book.year}) (${book.language}).${book.extension}`;
@@ -256,18 +198,18 @@ ipcMain.handle('download', async (event, { book }) => {
   downloads.push(downloadItem);
   store.set('downloads', downloads);
   win.webContents.send('downloads-updated', downloads);
-  log.info(`Download item added and updated in store for "${book.title}"`);
+  logger.info(`Download item added and updated in store for "${book.title}"`);
 
   // DOI Download Logic
   if (book.doi) {
     try {
-      log.info(`Attempting to download DOI: ${book.doi}`);
-      const directLink = await getSciHubDownloadLink(book.doi, log);
+      logger.info(`Attempting to download DOI: ${book.doi}`);
+      const directLink = await getSciHubDownloadLink(book.doi, logger);
       if (!directLink) {
         throw new Error('Could not resolve Sci-Hub download link');
       }
 
-      log.info(`Starting download for "${book.title}" from Sci-Hub link: ${directLink}`);
+      logger.info(`Starting download for "${book.title}" from Sci-Hub link: ${directLink}`);
       const downloadStream = got.stream(directLink);
       const fileWriterStream = fs.createWriteStream(filePath);
       downloadItems[book.client_id] = downloadStream;
@@ -304,10 +246,10 @@ ipcMain.handle('download', async (event, { book }) => {
         if (item) {
           if (error) {
             item.state = 'failed';
-            log.error(`Download failed for "${book.title}": ${error.message}`);
+            logger.error(`Download failed for "${book.title}": ${error.message}`);
           } else {
             item.state = 'completed';
-            log.info(`Download completed for "${book.title}"`);
+            logger.info(`Download completed for "${book.title}"`);
           }
           store.set('downloads', finalDownloads);
           win.webContents.send('downloads-updated', finalDownloads);
@@ -316,7 +258,7 @@ ipcMain.handle('download', async (event, { book }) => {
       });
       return;
     } catch (error) {
-      log.error(`Error downloading DOI ${book.doi}:`, error);
+      logger.error(`Error downloading DOI ${book.doi}:`, error);
       const finalDownloads = store.get('downloads', []);
       const item = finalDownloads.find((d) => d.client_id === book.client_id);
       if (item) {
@@ -335,20 +277,20 @@ ipcMain.handle('download', async (event, { book }) => {
         ? mirror
         : `https://libgen.li/${mirror}`;
       
-      log.info(`Attempting to get download links from mirror: ${downloadPageUrl}`);
-      const downloadLinks = await getDownloadLinks(downloadPageUrl, log);
+      logger.info(`Attempting to get download links from mirror: ${downloadPageUrl}`);
+      const downloadLinks = await getDownloadLinks(downloadPageUrl, logger);
       if (!downloadLinks || downloadLinks.length === 0) {
         throw new Error('No download links found');
       }
 
-      log.info(`Resolving direct download link from: ${downloadLinks[0]}`);
-      const directLink = await resolveDirectDownloadLink(downloadLinks[0], log);
+      logger.info(`Resolving direct download link from: ${downloadLinks[0]}`);
+      const directLink = await resolveDirectDownloadLink(downloadLinks[0], logger);
       if (!directLink) {
         throw new Error('Could not resolve direct download link');
       }
 
       if (directLink.includes('slow_download')) {
-        log.info(`Handling slow download for "${book.title}", opening in browser.`);
+        logger.info(`Handling slow download for "${book.title}", opening in browser.`);
         shell.openExternal(directLink);
         const finalDownloads = store.get('downloads', []);
         const item = finalDownloads.find((d) => d.client_id === book.client_id);
@@ -360,7 +302,7 @@ ipcMain.handle('download', async (event, { book }) => {
         return;
       }
 
-      log.info(`Starting download for "${book.title}" from direct link.`);
+      logger.info(`Starting download for "${book.title}" from direct link.`);
       const downloadStream = got.stream(directLink);
       const fileWriterStream = fs.createWriteStream(filePath);
       downloadItems[book.client_id] = downloadStream;
@@ -397,10 +339,10 @@ ipcMain.handle('download', async (event, { book }) => {
         if (item) {
           if (error) {
             item.state = 'failed';
-            log.error(`Download failed for "${book.title}": ${error.message}`);
+            logger.error(`Download failed for "${book.title}": ${error.message}`);
           } else {
             item.state = 'completed';
-            log.info(`Download completed for "${book.title}"`);
+            logger.info(`Download completed for "${book.title}"`);
           }
           store.set('downloads', finalDownloads);
           win.webContents.send('downloads-updated', finalDownloads);
@@ -409,13 +351,13 @@ ipcMain.handle('download', async (event, { book }) => {
       });
       return; // Exit the loop if download starts successfully
     } catch (error) {
-      log.error(`Error with mirror ${mirror} for book "${book.title}":`, error);
+      logger.error(`Error with mirror ${mirror} for book "${book.title}":`, error);
       // Continue to the next mirror
     }
   }
 
   // If all mirrors fail
-  log.error(`All mirrors failed for book: "${book.title}"`);
+  logger.error(`All mirrors failed for book: "${book.title}"`);
   const finalDownloads = store.get('downloads', []);
   const item = finalDownloads.find((d) => d.client_id === book.client_id);
   if (item) {
@@ -426,12 +368,12 @@ ipcMain.handle('download', async (event, { book }) => {
 });
 
 ipcMain.handle('get-downloads', () => {
-  log.info('Fetching current downloads list.');
+  logger.info('Fetching current downloads list.');
   return store.get('downloads', []);
 });
 
 ipcMain.handle('clear-downloads', () => {
-  log.info('Clearing completed downloads from the list.');
+  logger.info('Clearing completed downloads from the list.');
   const downloads = store.get('downloads', []);
   const inProgressDownloads = downloads.filter(d => d.state === 'downloading' || d.state === 'resolving');
   store.set('downloads', inProgressDownloads);
@@ -439,11 +381,11 @@ ipcMain.handle('clear-downloads', () => {
 });
 
 ipcMain.handle('cancel-download', (event, clientId) => {
-  log.info(`Canceling download for client ID: ${clientId}`);
+  logger.info(`Canceling download for client ID: ${clientId}`);
   const downloadStream = downloadItems[clientId];
   if (downloadStream) {
     downloadStream.destroy();
-    log.info(`Download stream destroyed for client ID: ${clientId}`);
+    logger.info(`Download stream destroyed for client ID: ${clientId}`);
   }
   const downloads = store.get('downloads', []);
   const newDownloads = downloads.filter((d) => d.client_id !== clientId);
@@ -452,49 +394,49 @@ ipcMain.handle('cancel-download', (event, clientId) => {
 });
 
 ipcMain.handle('open-file', (event, filename) => {
-  log.info(`Request to open file: "${filename}"`);
+  logger.info(`Request to open file: "${filename}"`);
   const downloads = store.get('downloads', []);
   const downloadItem = downloads.find((d) => d.filename === filename);
   if (downloadItem && downloadItem.state === 'completed') {
     shell.openPath(downloadItem.path);
   } else {
-    log.warn(`File not found or not completed: "${filename}"`);
+    logger.warn(`File not found or not completed: "${filename}"`);
   }
 });
 
 ipcMain.handle('open-folder', (event, filename) => {
-  log.info(`Request to open folder for file: "${filename}"`);
+  logger.info(`Request to open folder for file: "${filename}"`);
   const downloads = store.get('downloads', []);
   const downloadItem = downloads.find((d) => d.filename === filename);
   if (downloadItem && downloadItem.state === 'completed') {
     shell.showItemInFolder(downloadItem.path);
   } else {
-    log.warn(`File not found or not completed, cannot open folder: "${filename}"`);
+    logger.warn(`File not found or not completed, cannot open folder: "${filename}"`);
   }
 });
 
 ipcMain.handle('open-link', (event, link) => {
-  log.info(`Opening external link: ${link}`);
+  logger.info(`Opening external link: ${link}`);
   shell.openExternal(link);
 });
 
 ipcMain.handle('get-download-location', async () => {
-  log.info('Opening dialog to select download location.');
+  logger.info('Opening dialog to select download location.');
   const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
     properties: ['openDirectory'],
   });
   if (canceled) {
-    log.info('Download location selection was canceled.');
+    logger.info('Download location selection was canceled.');
     return null;
   } else {
-    log.info(`Download location selected: ${filePaths[0]}`);
+    logger.info(`Download location selected: ${filePaths[0]}`);
     return filePaths[0];
   }
 });
 
 ipcMain.handle('get-version', () => {
   const version = app.getVersion();
-  log.info(`Fetching app version: ${version}`);
+  logger.info(`Fetching app version: ${version}`);
   return version;
 });
 
@@ -519,5 +461,44 @@ ipcMain.handle('remove-libgen-mirror', async (event, url) => {
 // IPC handler to test LibGen access
 ipcMain.handle('test-libgen-access', async (event) => {
   const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
-  return await testLibgenAccess(win, log);
+  return await testLibgenAccess(win, logger);
+});
+
+ipcMain.handle('open-logs-folder', () => {
+  const logsPath = require('path').join(__dirname, 'logs');
+  shell.openPath(logsPath);
+});
+
+ipcMain.handle('get-latest-log', async () => {
+  const fs = require('fs');
+  const path = require('path');
+  const logPath = path.join(__dirname, 'logs', 'log-latest.txt');
+  try {
+    if (fs.existsSync(logPath)) {
+      return fs.readFileSync(logPath, 'utf8');
+    } else {
+      return 'No log file found.';
+    }
+  } catch (e) {
+    return 'Failed to read log file.';
+  }
+});
+
+// Patch logger to emit log lines to renderer
+const { info, warn, error, LOGS_DIR } = logger;
+function emitLogToRenderers(line) {
+  const { BrowserWindow } = require('electron');
+  BrowserWindow.getAllWindows().forEach(win => {
+    win.webContents.send('log-update', line);
+  });
+}
+['info', 'warn', 'error'].forEach(level => {
+  const orig = logger[level];
+  logger[level] = (...args) => {
+    orig(...args);
+    try {
+      const msg = args.map(a => (typeof a === 'string' ? a : JSON.stringify(a, null, 2))).join(' ');
+      emitLogToRenderers(`[${level.toUpperCase()}] ${msg}`);
+    } catch {}
+  };
 });

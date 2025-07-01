@@ -7,15 +7,18 @@
     "searching": "Поиск...",
     "searchResults": "Результаты поиска",
     "showAllFiles": "Показать все файлы",
+    "showOnlyIsbn": "Показывать только книги с ISBN",
     "noResults": "Результаты не найдены",
     "loading": "Загрузка...",
     "error": "Ошибка",
     "success": "Успех",
-    "info": "Информация"
+    "info": "Информация",
+    "found": "найдено"
   },
   "settings": {
     "title": "Настройки",
     "theme": "Тема",
+    "themeAndAccent": "Тема и акцент",
     "dark": "Темная",
     "light": "Светлая",
     "accentColors": "Акцентные цвета",

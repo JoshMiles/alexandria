@@ -7,15 +7,18 @@
     "searching": "検索中...",
     "searchResults": "検索結果",
     "showAllFiles": "すべてのファイルを表示",
+    "showOnlyIsbn": "ISBN付きの本のみ表示",
     "noResults": "結果が見つかりません",
     "loading": "読み込み中...",
     "error": "エラー",
     "success": "成功",
-    "info": "情報"
+    "info": "情報",
+    "found": "件見つかりました"
   },
   "settings": {
     "title": "設定",
     "theme": "テーマ",
+    "themeAndAccent": "テーマとアクセント",
     "dark": "ダーク",
     "light": "ライト",
     "accentColors": "アクセントカラー",

@@ -11,6 +11,6 @@ echo "Running test script..."
 ./scripts/build.sh
 
 # Launch the application
-npm start
+npm test
 
 echo "Test script complete."

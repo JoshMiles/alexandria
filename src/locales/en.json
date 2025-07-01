@@ -7,15 +7,19 @@
     "searching": "Searching...",
     "searchResults": "Search Results",
     "showAllFiles": "Show all files",
+    "showOnlyIsbn": "Show Only ISBN Books",
     "noResults": "No results found",
+    "noResultsWithFilter": "No results found with the current filter(s)",
     "loading": "Loading...",
     "error": "Error",
     "success": "Success",
-    "info": "Info"
+    "info": "Info",
+    "found": "found"
   },
   "settings": {
     "title": "Settings",
     "theme": "Theme",
+    "themeAndAccent": "Theme & Accent",
     "dark": "Dark",
     "light": "Light",
     "accentColors": "Accent Colors",

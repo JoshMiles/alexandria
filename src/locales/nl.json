@@ -7,15 +7,18 @@
     "searching": "Zoeken...",
     "searchResults": "Zoekresultaten",
     "showAllFiles": "Alle bestanden tonen",
+    "showOnlyIsbn": "Toon alleen boeken met ISBN",
     "noResults": "Geen resultaten gevonden",
     "loading": "Laden...",
     "error": "Fout",
     "success": "Succes",
-    "info": "Informatie"
+    "info": "Informatie",
+    "found": "gevonden"
   },
   "settings": {
     "title": "Instellingen",
     "theme": "Thema",
+    "themeAndAccent": "Thema & accent",
     "dark": "Donker",
     "light": "Licht",
     "accentColors": "Accentkleuren",

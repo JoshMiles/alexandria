@@ -33,31 +33,39 @@ export interface Download extends Book {
   startTime: number;
 }
 
+export interface ElectronAPI {
+  platform: string;
+  minimize: () => void;
+  maximize: () => void;
+  close: () => void;
+  search: (query: string) => Promise<any>;
+  download: (options: any) => Promise<any>;
+  getDownloadLinks: (link: string) => Promise<any>;
+  resolve: (link: string) => Promise<any>;
+  openLink: (link: string) => void;
+  getDownloads: () => Promise<any>;
+  clearDownloads: () => Promise<any>;
+  cancelDownload: (clientId: string) => Promise<any>;
+  openFile: (filename: string) => Promise<any>;
+  openFolder: (filename: string) => Promise<any>;
+  openLogsFolder: () => Promise<any>;
+  getLatestLog: () => Promise<string>;
+  onLogUpdate: (callback: (line: string) => void) => void;
+  offLogUpdate?: (callback: (line: string) => void) => void;
+  on: (channel: string, callback: (...args: any[]) => void) => void;
+  onDownloadsUpdated: (callback: (...args: any[]) => void) => void;
+  onDownloadProgress: (callback: (...args: any[]) => void) => void;
+  getDownloadLocation: () => Promise<string | null>;
+  getVersion: () => Promise<string>;
+  getLibgenAccessInfo: () => Promise<any>;
+  resetLibgenAccessMethod: () => Promise<any>;
+  addLibgenMirror: (url: string) => Promise<any>;
+  removeLibgenMirror: (url: string) => Promise<any>;
+  testLibgenAccess: () => Promise<any>;
+}
+
 declare global {
   interface Window {
-    electron: {
-      platform: string;
-      getVersion: () => Promise<string>;
-      search: (query: string) => Promise<Book[]>;
-      openLink: (link: string) => void;
-      on: (channel: 'update-message' | 'search-status', callback: (message: string) => void) => void;
-      minimize: () => void;
-      maximize: () => void;
-      close: () => void;
-      download: (options: { book: Book }) => void;
-      cancelDownload: (clientId: string) => void;
-      openFile: (filename: string) => void;
-      openFolder: (filename: string) => void;
-      clearDownloads: () => void;
-      getDownloads: () => Promise<Download[]>;
-      onDownloadsUpdated: (callback: (downloads: Download[]) => void) => void;
-      onDownloadProgress: (callback: (progress: { clientId: string; progress: any }) => void) => void;
-      getDownloadLocation: () => Promise<string | null>;
-      getLibgenAccessInfo: () => Promise<{ mirrors: string[]; proxies: string[]; currentMethod: string | null; lastError: string | null }>;
-      resetLibgenAccessMethod: () => Promise<boolean>;
-      addLibgenMirror: (url: string) => Promise<{ mirrors: string[]; currentMethod: string | null; lastError: string | null }>;
-      removeLibgenMirror: (url: string) => Promise<{ mirrors: string[]; currentMethod: string | null; lastError: string | null }>;
-      testLibgenAccess: () => Promise<{ success: boolean; workingMirror: string | null; error: string | null }>;
-    };
+    electron: ElectronAPI;
   }
 }

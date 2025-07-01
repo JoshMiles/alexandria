@@ -7,15 +7,18 @@
     "searching": "Pesquisando...",
     "searchResults": "Resultados da pesquisa",
     "showAllFiles": "Mostrar todos os arquivos",
+    "showOnlyIsbn": "Mostrar apenas livros com ISBN",
     "noResults": "Nenhum resultado encontrado",
     "loading": "Carregando...",
     "error": "Erro",
     "success": "Sucesso",
-    "info": "Informação"
+    "info": "Informação",
+    "found": "encontrados"
   },
   "settings": {
     "title": "Configurações",
     "theme": "Tema",
+    "themeAndAccent": "Tema e destaque",
     "dark": "Escuro",
     "light": "Claro",
     "accentColors": "Cores de destaque",

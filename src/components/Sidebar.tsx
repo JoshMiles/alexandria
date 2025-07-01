@@ -21,6 +21,7 @@ const Sidebar = forwardRef<Resizable, SidebarProps>(({
 }, ref) => {
   const [searchQuery, setSearchQuery] = useState('');
   const { t } = useI18n();
+  const [imageErrors, setImageErrors] = useState<{ [key: string]: boolean }>({});
 
   const handleClear = () => {
     onClear();
@@ -114,91 +115,105 @@ const Sidebar = forwardRef<Resizable, SidebarProps>(({
 
         {/* Downloads list - scrollable area */}
         <div className="downloads-list">
-          {filteredDownloads.map((download) => (
-            <div key={download.client_id} className="download-card">
-              <div className="download-status">
-                {renderDownloadIcon(download.state)}
-              </div>
-              <div className="download-card-top">
-                {isDoi(download.id) ? (
-                  <div className="download-card-cover-icon">
-                    <FiFileText size={32} />
-                  </div>
-                ) : (
-                  <img 
-                    src={download.thumbnail || `https://via.placeholder.com/48x72.png?text=${download.title.charAt(0)}`} 
-                    alt={download.title} 
-                    className="download-card-cover" 
-                  />
-                )}
-                <div className="download-info">
-                  <div className="download-details">
-                    <p className="title">{download.title}</p>
-                    <p className="author">{download.author}</p>
-                  </div>
-                  <div className="download-metadata">
-                    <div className="download-chips">
-                      <span className="chip">{download.language}</span>
-                      <span className="chip">{download.extension}</span>
+          {filteredDownloads.map((download) => {
+            const imageError = imageErrors[download.client_id] || false;
+            const handleImageError = () => {
+              setImageErrors(prev => ({ ...prev, [download.client_id]: true }));
+            };
+            return (
+              <div key={download.client_id} className="download-card">
+                <div className="download-status">
+                  {renderDownloadIcon(download.state)}
+                </div>
+                <div className="download-card-top">
+                  {isDoi(download.id) ? (
+                    <div className="download-card-cover-icon">
+                      <FiFileText size={32} />
+                    </div>
+                  ) : (
+                    !imageError ? (
+                      <img
+                        src={download.thumbnail || `https://libgen.is/covers/fictioncovers/${download.id}.jpg`}
+                        alt={download.title}
+                        className="download-card-cover"
+                        onError={handleImageError}
+                      />
+                    ) : (
+                      <div className="download-cover-fallback">
+                        <div className="download-cover-fallback-title">{download.title}</div>
+                        <div className="download-cover-fallback-author">{download.author}</div>
+                      </div>
+                    )
+                  )}
+                  <div className="download-info">
+                    <div className="download-details">
+                      <p className="title">{download.title}</p>
+                      <p className="author">{download.author}</p>
+                    </div>
+                    <div className="download-metadata">
+                      <div className="download-chips">
+                        <span className="chip">{download.language}</span>
+                        <span className="chip">{download.extension}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
+
+                {download.state === 'resolving' && (
+                  <div className="resolving-area">
+                    <FiLoader className="icon resolving" />
+                    <span>{t('downloads.resolving')}</span>
+                  </div>
+                )}
+
+                {download.state === 'downloading' && (
+                  <div className="download-progress-area">
+                    <div className="progress-container">
+                      {download.progress.total > 0 ? (
+                        <div className="progress-bar-determinate" style={{ width: `${download.progress.percent * 100}%` }}></div>
+                      ) : (
+                        <div className="progress-indeterminate"><div className="progress-bar" /></div>
+                      )}
+                    </div>
+                    <div className="progress-text">
+                      <span>{t('downloads.downloading')}</span>
+                      {download.progress.total > 0 && (
+                        <span>
+                          {`${(download.progress.transferred / 1024 / 1024).toFixed(2)}MB / ${(
+                            download.progress.total /
+                            1024 /
+                            1024
+                          ).toFixed(2)}MB`}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {download.state === 'completed' && (
+                  <div className="download-actions">
+                    <button onClick={() => handleOpenFile(download.filename)}>
+                      <FiDownload />
+                      <span>{t('downloads.open')}</span>
+                    </button>
+                    <button onClick={() => handleOpenFolder(download.filename)}>
+                      <FiFolder />
+                      <span>{t('downloads.folder')}</span>
+                    </button>
+                  </div>
+                )}
+
+                {(download.state === 'downloading' || download.state === 'resolving') && (
+                  <div className="download-actions">
+                    <button className="cancel-download-button" onClick={() => handleCancel(download.client_id, download.title)}>
+                      <FiXCircle />
+                      <span>{t('downloads.cancel')}</span>
+                    </button>
+                  </div>
+                )}
               </div>
-
-              {download.state === 'resolving' && (
-                <div className="resolving-area">
-                  <FiLoader className="icon resolving" />
-                  <span>{t('downloads.resolving')}</span>
-                </div>
-              )}
-
-              {download.state === 'downloading' && (
-                <div className="download-progress-area">
-                  <div className="progress-container">
-                    {download.progress.total > 0 ? (
-                      <div className="progress-bar-determinate" style={{ width: `${download.progress.percent * 100}%` }}></div>
-                    ) : (
-                      <div className="progress-indeterminate"><div className="progress-bar" /></div>
-                    )}
-                  </div>
-                  <div className="progress-text">
-                    <span>{t('downloads.downloading')}</span>
-                    {download.progress.total > 0 && (
-                      <span>
-                        {`${(download.progress.transferred / 1024 / 1024).toFixed(2)}MB / ${(
-                          download.progress.total /
-                          1024 /
-                          1024
-                        ).toFixed(2)}MB`}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {download.state === 'completed' && (
-                <div className="download-actions">
-                  <button onClick={() => handleOpenFile(download.filename)}>
-                    <FiDownload />
-                    <span>{t('downloads.open')}</span>
-                  </button>
-                  <button onClick={() => handleOpenFolder(download.filename)}>
-                    <FiFolder />
-                    <span>{t('downloads.folder')}</span>
-                  </button>
-                </div>
-              )}
-
-              {(download.state === 'downloading' || download.state === 'resolving') && (
-                <div className="download-actions">
-                  <button className="cancel-download-button" onClick={() => handleCancel(download.client_id, download.title)}>
-                    <FiXCircle />
-                    <span>{t('downloads.cancel')}</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
           {filteredDownloads.length === 0 && downloads.length > 0 && (
             <div className="no-downloads-found">
               <p>{t('downloads.noDownloadsMatch')}</p>

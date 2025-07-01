@@ -33,6 +33,17 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
+    // Apply all custom theme variables for the current theme
+    const THEME_VARIABLES = [
+      'background', 'background-light', 'background-lighter', 'foreground', 'foreground-dark', 'accent', 'accent-hover', 'accent-glow', 'border', 'border-light', 'download-button-color', 'download-button-hover-color', 'success', 'error'
+    ];
+    THEME_VARIABLES.forEach((key) => {
+      const storageKey = `${theme}-${key}`;
+      const value = localStorage.getItem(storageKey);
+      if (value) {
+        document.documentElement.style.setProperty(`--${key}`, value);
+      }
+    });
   }, [theme]);
 
   useEffect(() => {
@@ -57,6 +68,20 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     localStorage.setItem('downloadLocation', downloadLocation);
   }, [downloadLocation]);
+
+  useEffect(() => {
+    // On app load, apply all custom theme variables for the current theme
+    const THEME_VARIABLES = [
+      'background', 'background-light', 'background-lighter', 'foreground', 'foreground-dark', 'accent', 'accent-hover', 'accent-glow', 'border', 'border-light', 'download-button-color', 'download-button-hover-color', 'success', 'error'
+    ];
+    THEME_VARIABLES.forEach((key) => {
+      const storageKey = `${theme}-${key}`;
+      const value = localStorage.getItem(storageKey);
+      if (value) {
+        document.documentElement.style.setProperty(`--${key}`, value);
+      }
+    });
+  }, []);
 
   const setDownloadLocation = async () => {
     const location = await window.electron.getDownloadLocation();

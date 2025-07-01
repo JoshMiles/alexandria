@@ -7,15 +7,18 @@
     "searching": "Suche läuft...",
     "searchResults": "Suchergebnisse",
     "showAllFiles": "Alle Dateien anzeigen",
+    "showOnlyIsbn": "Nur Bücher mit ISBN anzeigen",
     "noResults": "Keine Ergebnisse gefunden",
     "loading": "Lädt...",
     "error": "Fehler",
     "success": "Erfolg",
-    "info": "Info"
+    "info": "Info",
+    "found": "gefunden"
   },
   "settings": {
     "title": "Einstellungen",
     "theme": "Design",
+    "themeAndAccent": "Design & Akzent",
     "dark": "Dunkel",
     "light": "Hell",
     "accentColors": "Akzentfarben",

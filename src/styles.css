@@ -82,10 +82,13 @@ body {
 
 .main-content {
   display: flex;
+  justify-content: center;
+  align-items: flex-start;
   flex: 1;
-  overflow: hidden;
-  flex-direction: column;
   min-width: 0;
+  overflow-y: auto;
+  min-height: 0;
+  height: 100vh;
 }
 
 .app-footer {
@@ -325,29 +328,33 @@ input:checked + .slider:before {
 .search-results-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   margin-bottom: 1rem;
   padding: 0 2rem;
 }
 
-.search-results-header .toggle-container {
+.search-results-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.search-results-header-left h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.search-results-header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
   margin-left: auto;
 }
 
-.back-button {
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--foreground);
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  cursor: pointer;
-  margin-right: 1rem;
-  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  transform: translateY(0);
-}
-
-.back-button:hover {
-  background-color: var(--background-lighter);
-  border-color: var(--accent);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+.results-count {
+  font-size: 1rem;
+  color: var(--foreground-dark);
+  margin-left: 0.5rem;
+  font-weight: 400;
 }

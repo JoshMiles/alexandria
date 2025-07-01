@@ -5,9 +5,9 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "npm run clean && webpack",
+    "build": "webpack",
+    "build:conveyor": "conveyor make",
     "watch": "webpack --watch",
-    "dist": "electron-builder",
     "clean": "rm -rf dist node_modules/.cache/webpack",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -22,6 +22,7 @@
   "dependencies": {
     "@codaworks/react-glow": "^1.0.6",
     "@fontsource/inter": "^5.0.18",
+    "@hydraulic/conveyor": "^18.1.0",
     "axios": "^1.10.0",
     "cheerio": "^1.1.0",
     "clsx": "^2.1.1",
@@ -59,7 +60,6 @@
     "css-loader": "^7.1.2",
     "css-minimizer-webpack-plugin": "^6.0.0",
     "electron": "^37.1.0",
-    "electron-builder": "^26.0.12",
     "html-webpack-plugin": "^5.6.0",
     "identity-obj-proxy": "^3.0.0",
     "jest": "^30.0.3",
@@ -71,28 +71,5 @@
     "webpack": "^5.99.9",
     "webpack-bundle-analyzer": "^4.10.1",
     "webpack-cli": "^6.0.1"
-  },
-  "build": {
-    "appId": "com.example.alexandria",
-    "productName": "Alexandria",
-    "files": [
-      "dist/",
-      "main.js",
-      "preload.js"
-    ],
-    "mac": {
-      "target": "dmg"
-    },
-    "win": {
-      "target": "nsis"
-    },
-    "linux": {
-      "target": "AppImage"
-    },
-    "publish": {
-      "provider": "github",
-      "owner": "joshmiles",
-      "repo": "alexandria"
-    }
   }
 }

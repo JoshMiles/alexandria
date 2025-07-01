@@ -23,9 +23,9 @@ jobs:
       - name: Install Conveyor
         run: npm install -g @hydraulic/conveyor
       - name: Build Windows app
-        run: conveyor make windows-app
+        run: conveyor -Kapp.machines=win.x64 make windows-app
       - name: Build Linux app
-        run: conveyor make linux-app
+        run: conveyor -Kapp.machines=linux.x64 make linux-app
       - name: Build macOS Intel app
         run: conveyor -Kapp.machines=mac.amd64 make mac-app
       - name: Build macOS Apple Silicon app

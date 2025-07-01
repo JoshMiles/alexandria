@@ -18,15 +18,21 @@ jobs:
         run: npm install
       - name: Build app (webpack)
         run: npm run build
-      - name: Copy Electron entry files to dist
-        run: cp main.js preload.js dist/
+      - name: Copy Electron main process and preload to dist
+        run: cp ./main.js ./preload.js dist/
+      - name: Get Electron version
+        id: get_electron_version
+        run: echo "version=$(node -p \"require('./package.json').devDependencies.electron\")" >> $GITHUB_OUTPUT
       - name: Create minimal Electron package.json in dist
         run: |
           cat > dist/package.json <<EOL
           {
             "name": "alexandria",
             "version": "0.1.11",
-            "main": "main.js"
+            "main": "main.js",
+            "devDependencies": {
+              "electron": "^${{ steps.get_electron_version.outputs.version }}"
+            }
           }
           EOL
       - name: List dist contents

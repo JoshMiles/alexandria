@@ -105,3 +105,13 @@ npm run make
 2. Commit and push your changes.
 3. Create a new GitHub release with the built artifacts from the `out/` directory.
 4. Electron Forge's auto-updater will use GitHub releases for updates.
+
+
+| Platform         | Installer/ZIP Link |
+|------------------|-------------------|
+| Windows          | [Download EXE]() |
+| macOS (Intel)    | [Download ZIP](https://github.com/JoshMiles/alexandria/releases/download/v0.1.55/alexandria-darwin-x64-0.1.55.zip) |
+| macOS (Apple)    | [Download ZIP](https://github.com/JoshMiles/alexandria/releases/download/v0.1.55/alexandria-darwin-arm64-0.1.55.zip) |
+| Linux (DEB)      | [Download DEB]() |
+| Linux (RPM)      | [Download RPM]() |
+

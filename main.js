@@ -6,6 +6,7 @@ const { pipeline } = require('stream');
 const os = require('os');
 const https = require('https');
 const { search, getDownloadLinks, resolveDirectDownloadLink, getSciHubDownloadLink, getLibgenAccessInfo, resetLibgenAccessMethod, addLibgenMirror, removeLibgenMirror, testLibgenAccess } = require('./dist/backend.js');
+const { autoUpdater } = require('electron-updater');
 
 let store;
 let downloadItems = {};
@@ -76,54 +77,105 @@ app.whenReady().then(async () => {
 
   createStartupWindow();
 
-  // No custom update event handling; let Conveyor handle updates natively.
-  if (app.isPackaged) {
-    // Optionally, you can show a message that updates are being checked by Conveyor.
-    // Otherwise, proceed directly to LibGen access check after a short delay.
-    setTimeout(async () => {
-      if (startupWindow) {
-        logger.info('Performing LibGen access check...');
-        try {
-          const result = await testLibgenAccess(startupWindow, logger);
-          if (result.success) {
-            logger.info(`LibGen access check successful. Working mirror: ${result.workingMirror}`);
-          } else {
-            logger.warn(`LibGen access check failed: ${result.error}`);
-          }
-        } catch (error) {
-          logger.error('Error during LibGen access check:', error);
+  async function startLibgenCheck() {
+    if (startupWindow) {
+      logger.info('Performing LibGen access check...');
+      try {
+        const result = await testLibgenAccess(startupWindow, logger);
+        if (result.success) {
+          logger.info(`LibGen access check successful. Working mirror: ${result.workingMirror}`);
+        } else {
+          logger.warn(`LibGen access check failed: ${result.error}`);
         }
-        setTimeout(() => {
-          if (startupWindow) {
-            startupWindow.close();
-          }
-          createWindow();
-        }, 1000);
+      } catch (error) {
+        logger.error('Error during LibGen access check:', error);
       }
-    }, 2000); // Give Conveyor a moment to check for updates
+      setTimeout(() => {
+        if (startupWindow) {
+          startupWindow.close();
+        }
+        createWindow();
+      }, 1000);
+    }
+  }
+
+  const isMac = process.platform === 'darwin';
+  if (app.isPackaged) {
+    // Electron Forge auto-updater logic
+    let updateHandled = false;
+    function sendUpdateMessage(msg) {
+      if (startupWindow) {
+        startupWindow.webContents.send('update-message', msg);
+      }
+    }
+    autoUpdater.on('checking-for-update', () => {
+      sendUpdateMessage('Checking for updates...');
+    });
+    autoUpdater.on('update-available', (info) => {
+      sendUpdateMessage('Update available. Downloading...');
+    });
+    autoUpdater.on('download-progress', (progressObj) => {
+      const percent = Math.round(progressObj.percent);
+      sendUpdateMessage(`Downloading update: ${percent}%`);
+    });
+    autoUpdater.on('update-not-available', (info) => {
+      sendUpdateMessage('No updates available.');
+      if (!updateHandled) {
+        updateHandled = true;
+        setTimeout(startLibgenCheck, 1000);
+      }
+    });
+    autoUpdater.on('update-downloaded', async (info) => {
+      if (isMac) {
+        sendUpdateMessage('Update downloaded. Opening folder...');
+        // Try to open the folder containing the downloaded ZIP
+        const updateFile = info && info.downloadedFile ? info.downloadedFile : null;
+        let folderToOpen = null;
+        if (updateFile) {
+          folderToOpen = path.dirname(updateFile);
+        } else {
+          // Fallback: open Downloads folder
+          folderToOpen = app.getPath('downloads');
+        }
+        await shell.openPath(folderToOpen);
+        dialog.showMessageBox({
+          type: 'info',
+          title: 'Update Ready',
+          message: 'A new version has been downloaded. Please quit the app and replace it with the new version from the opened folder.',
+          buttons: ['OK']
+        });
+        sendUpdateMessage('Update ready. Please replace the app and relaunch.');
+        if (!updateHandled) {
+          updateHandled = true;
+          setTimeout(startLibgenCheck, 1000);
+        }
+      } else {
+        sendUpdateMessage('Update downloaded. Restarting...');
+        setTimeout(() => {
+          autoUpdater.quitAndInstall();
+        }, 1500);
+      }
+    });
+    autoUpdater.on('error', (err) => {
+      logger.error('Auto-updater error:', err);
+      sendUpdateMessage('Update check failed.');
+      if (!updateHandled) {
+        updateHandled = true;
+        setTimeout(startLibgenCheck, 1000);
+      }
+    });
+    // Start update check
+    autoUpdater.checkForUpdatesAndNotify();
+    // Fallback: if update events don't fire, proceed after timeout
+    setTimeout(() => {
+      if (!updateHandled) {
+        updateHandled = true;
+        startLibgenCheck();
+      }
+    }, 20000);
   } else {
     // In development, skip update check but still do LibGen check
-    setTimeout(async () => {
-      if (startupWindow) {
-        logger.info('Performing LibGen access check...');
-        try {
-          const result = await testLibgenAccess(startupWindow, logger);
-          if (result.success) {
-            logger.info(`LibGen access check successful. Working mirror: ${result.workingMirror}`);
-          } else {
-            logger.warn(`LibGen access check failed: ${result.error}`);
-          }
-        } catch (error) {
-          logger.error('Error during LibGen access check:', error);
-        }
-        setTimeout(() => {
-          if (startupWindow) {
-            startupWindow.close();
-          }
-          createWindow();
-        }, 1000);
-      }
-    }, 1000);
+    setTimeout(startLibgenCheck, 1000);
   }
 
   app.on('activate', () => {

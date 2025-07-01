@@ -82,3 +82,26 @@ This project is licensed under the MIT License. See the [LICENSE](https://github
 ## ⭐️ Community
 
 For more information, visit the [Alexandria GitHub repository](https://github.com/JoshMiles/alexandria).
+
+## Building and Packaging
+
+This project uses [Electron Forge](https://www.electronforge.io/) for building, packaging, and auto-updates.
+
+### Development
+
+```
+npm start
+```
+
+### Packaging for Distribution
+
+```
+npm run make
+```
+
+### Publishing Releases (with Auto-Update)
+
+1. Bump your version in package.json.
+2. Commit and push your changes.
+3. Create a new GitHub release with the built artifacts from the `out/` directory.
+4. Electron Forge's auto-updater will use GitHub releases for updates.

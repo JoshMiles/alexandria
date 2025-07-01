@@ -1,4 +1,4 @@
-name: Build and Package
+name: Build and Release with Electron Forge
 
 on:
   push:
@@ -7,7 +7,10 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v3
       - name: Set up Node.js
@@ -18,53 +21,26 @@ jobs:
         run: npm install
       - name: Build app (webpack)
         run: npm run build
-      - name: Get Electron version
-        id: get_electron_version
-        run: echo "version=$(node -p 'require(\"./package.json\").devDependencies.electron')" >> $GITHUB_OUTPUT
-      - name: Create minimal Electron package.json in root (for CI)
-        run: |
-          cat > package.json <<EOL
-          {
-            "name": "alexandria",
-            "version": "0.1.11",
-            "main": "main.js",
-            "devDependencies": {
-              "electron": "^${{ steps.get_electron_version.outputs.version }}"
-            }
-          }
-          EOL
-      - name: List root contents
-        run: ls -l
-      - name: Build Windows app
-        uses: hydraulic-software/conveyor/actions/build@v18.1
-        with:
-          command: make windows-app
-          signing_key: ${{ secrets.SIGNING_KEY }}
-          agree_to_license: 1
-          extra_flags: -Kapp.machines=win.x64 -f ci.conveyor.conf
-      - name: Build Linux app
-        uses: hydraulic-software/conveyor/actions/build@v18.1
-        with:
-          command: make linux-app
-          signing_key: ${{ secrets.SIGNING_KEY }}
-          agree_to_license: 1
-          extra_flags: -Kapp.machines=linux.x64 -f ci.conveyor.conf
-      - name: Build macOS Intel app
-        uses: hydraulic-software/conveyor/actions/build@v18.1
-        with:
-          command: make mac-app
-          signing_key: ${{ secrets.SIGNING_KEY }}
-          agree_to_license: 1
-          extra_flags: -Kapp.machines=mac.amd64 -f ci.conveyor.conf
-      - name: Build macOS Apple Silicon app
-        uses: hydraulic-software/conveyor/actions/build@v18.1
-        with:
-          command: make mac-app
-          signing_key: ${{ secrets.SIGNING_KEY }}
-          agree_to_license: 1
-          extra_flags: -Kapp.machines=mac.aarch64 -f ci.conveyor.conf
+      - name: Make distributables
+        run: npm run make
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: installers
+          name: ${{ runner.os }}-artifacts
           path: out/
+  
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: out/
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/**
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

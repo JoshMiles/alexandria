@@ -33,7 +33,7 @@ jobs:
         run: npm run build
 
       - name: Build and release
-        uses: joshmiles/action-electron-builder@v1.7.1
+        uses: joshmiles/action-electron-builder@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           release: true

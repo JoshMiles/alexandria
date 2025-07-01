@@ -8,8 +8,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      CONVEYOR_AGREE_TO_LICENSE: 1
     steps:
       - uses: actions/checkout@v3
       - name: Set up Node.js
@@ -22,24 +20,34 @@ jobs:
         run: npm run build
       - name: Copy Electron entry files to dist
         run: cp main.js preload.js dist/
-      - name: Install Conveyor
-        run: npm install -g @hydraulic/conveyor
       - name: Build Windows app
-        env:
-          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
-        run: conveyor -f ci.conveyor.conf -Kapp.machines=win.x64 make windows-app
+        uses: hydraulic-software/conveyor/actions/build@v18.1
+        with:
+          command: make windows-app
+          signing_key: ${{ secrets.SIGNING_KEY }}
+          agree_to_license: 1
+          extra_flags: -Kapp.machines=win.x64 -f ci.conveyor.conf
       - name: Build Linux app
-        env:
-          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
-        run: conveyor -f ci.conveyor.conf -Kapp.machines=linux.x64 make linux-app
+        uses: hydraulic-software/conveyor/actions/build@v18.1
+        with:
+          command: make linux-app
+          signing_key: ${{ secrets.SIGNING_KEY }}
+          agree_to_license: 1
+          extra_flags: -Kapp.machines=linux.x64 -f ci.conveyor.conf
       - name: Build macOS Intel app
-        env:
-          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
-        run: conveyor -f ci.conveyor.conf -Kapp.machines=mac.amd64 make mac-app
+        uses: hydraulic-software/conveyor/actions/build@v18.1
+        with:
+          command: make mac-app
+          signing_key: ${{ secrets.SIGNING_KEY }}
+          agree_to_license: 1
+          extra_flags: -Kapp.machines=mac.amd64 -f ci.conveyor.conf
       - name: Build macOS Apple Silicon app
-        env:
-          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
-        run: conveyor -f ci.conveyor.conf -Kapp.machines=mac.aarch64 make mac-app
+        uses: hydraulic-software/conveyor/actions/build@v18.1
+        with:
+          command: make mac-app
+          signing_key: ${{ secrets.SIGNING_KEY }}
+          agree_to_license: 1
+          extra_flags: -Kapp.machines=mac.aarch64 -f ci.conveyor.conf
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:

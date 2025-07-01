@@ -82,6 +82,9 @@
     ],
     "mac": {
       "target": "dmg"
+      "arch": [
+          "universal"
+      ]
     },
     "win": {
       "target": "nsis"

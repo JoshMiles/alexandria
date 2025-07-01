@@ -1,9 +1,23 @@
 const fs = require('fs');
 const path = require('path');
 
-const LOGS_DIR = path.join(__dirname, '..', 'logs');
+let LOGS_DIR;
+try {
+  // Try to use Electron's app.getPath('userData') if available
+  const electron = require('electron');
+  const app = electron.app || (electron.remote && electron.remote.app);
+  if (app && app.getPath) {
+    LOGS_DIR = path.join(app.getPath('userData'), 'logs');
+  } else {
+    LOGS_DIR = path.join(__dirname, '..', 'logs');
+  }
+} catch (e) {
+  // Fallback for non-Electron/test environments
+  LOGS_DIR = path.join(__dirname, '..', 'logs');
+}
+
 if (!fs.existsSync(LOGS_DIR)) {
-  fs.mkdirSync(LOGS_DIR);
+  fs.mkdirSync(LOGS_DIR, { recursive: true });
 }
 
 function getTimestamp() {

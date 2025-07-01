@@ -18,12 +18,18 @@ jobs:
           node-version: '18'
       - name: Install dependencies
         run: npm install
-      - name: Build app
+      - name: Build app (webpack)
         run: npm run build
       - name: Install Conveyor
-        run: npm install -g conveyor
-      - name: Package app
-        run: npm run build:conveyor
+        run: npm install -g @hydraulic/conveyor
+      - name: Build Windows app
+        run: conveyor make windows-app
+      - name: Build Linux app
+        run: conveyor make linux-app
+      - name: Build macOS Intel app
+        run: conveyor -Kapp.machines=mac.amd64 make mac-app
+      - name: Build macOS Apple Silicon app
+        run: conveyor -Kapp.machines=mac.aarch64 make mac-app
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:

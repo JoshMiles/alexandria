@@ -17,7 +17,7 @@ Download the latest release for your platform:
 |----------|---------------|
 | **Windows** | [Alexandria-Setup-0.1.11.exe](https://github.com/JoshMiles/alexandria/releases/download/v0.1.11/Alexandria-Setup-0.1.11.exe) |
 | **macOS Silicon**   | [Alexandria-0.1.11-arm64.dmg](https://github.com/JoshMiles/alexandria/releases/download/v0.1.11/Alexandria-0.1.11-arm64.dmg) |
-| **macOS Intel**   | [Alexandria-0.1.11-arm64.dmg](https://github.com/JoshMiles/alexandria/releases/download/v0.1.11/Alexandria-0.1.11.dmg) |
+| **macOS Intel**   | [Alexandria-0.1.11.dmg](https://github.com/JoshMiles/alexandria/releases/download/v0.1.11/Alexandria-0.1.11.dmg) |
 | **Linux**   | [Alexandria-0.1.11.AppImage](https://github.com/JoshMiles/alexandria/releases/download/v0.1.11/Alexandria-0.1.11.AppImage) |
 ---
 

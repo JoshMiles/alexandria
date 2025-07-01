@@ -109,9 +109,12 @@ npm run make
 
 | Platform         | Installer/ZIP Link |
 |------------------|-------------------|
+
+| Platform         | Installer/ZIP Link |
+|------------------|-------------------|
 | Windows          | [Download EXE]() |
-| macOS (Intel)    | [Download ZIP](https://github.com/JoshMiles/alexandria/releases/download/v0.1.55/alexandria-darwin-x64-0.1.55.zip) |
-| macOS (Apple)    | [Download ZIP](https://github.com/JoshMiles/alexandria/releases/download/v0.1.55/alexandria-darwin-arm64-0.1.55.zip) |
+| macOS (Intel)    | [Download ZIP](https://github.com/JoshMiles/alexandria/releases/download/v0.1.57/alexandria-darwin-x64-0.1.57.zip) |
+| macOS (Apple)    | [Download ZIP](https://github.com/JoshMiles/alexandria/releases/download/v0.1.57/alexandria-darwin-arm64-0.1.57.zip) |
 | Linux (DEB)      | [Download DEB]() |
 | Linux (RPM)      | [Download RPM]() |
 

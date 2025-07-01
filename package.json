@@ -22,7 +22,6 @@
   "dependencies": {
     "@codaworks/react-glow": "^1.0.6",
     "@fontsource/inter": "^5.0.18",
-    "@electron/universal": "^1.4.2",
     "axios": "^1.10.0",
     "cheerio": "^1.1.0",
     "clsx": "^2.1.1",
@@ -98,10 +97,5 @@
       "owner": "joshmiles",
       "repo": "alexandria"
     },
-    "electronUniversal": {
-      "allowList": [
-        "dist/mac-universal-x64-temp/Electron.app"
-      ]
-  }
   }
 }

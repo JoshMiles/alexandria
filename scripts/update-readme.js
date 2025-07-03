@@ -41,9 +41,7 @@ function findAsset(assets, pattern) {
   const RPM_URL = findAsset(assets, '\\.(rpm)$');
 
   const newTable = `
-| Platform         | Installer/ZIP Link |
-|------------------|-------------------|
-| Windows          | [Download EXE](${WIN_URL}) |
+| Windows          | [Download Setup EXE](${WIN_URL}) |
 | macOS (Intel)    | [Download ZIP](${MAC_X64_ZIP_URL}) |
 | macOS (Apple)    | [Download ZIP](${MAC_ARM64_ZIP_URL}) |
 | Linux (DEB)      | [Download DEB](${DEB_URL}) |

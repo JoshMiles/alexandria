@@ -53,11 +53,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: out/
+      - name: List all files in out/ (debug)
+        run: ls -R out/
       - name: Create GitHub Release
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          files: out/**
+          files: out/**/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true

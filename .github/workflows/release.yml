@@ -59,7 +59,7 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          files: out/make/**/*
+          files: out/*-artifacts/make/**/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true

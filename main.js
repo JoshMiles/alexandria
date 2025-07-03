@@ -21,6 +21,7 @@ function createStartupWindow() {
     width: 400,
     height: 200,
     frame: false,
+    icon: path.join(__dirname, 'assets', process.platform === 'darwin' ? 'icon.icns' : process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'dist/preload.js'),
       contextIsolation: true,
@@ -42,6 +43,7 @@ function createWindow() {
     frame: false,
     titleBarStyle: 'hidden',
     trafficLightPosition: { x: 15, y: 15 },
+    icon: path.join(__dirname, 'assets', process.platform === 'darwin' ? 'icon.icns' : process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'dist/preload.js'),
       contextIsolation: true,
@@ -74,6 +76,15 @@ app.whenReady().then(async () => {
   store.set('downloads', completedDownloads);
 
   Store.initRenderer();
+
+  // Set Dock icon on macOS during development
+  if (process.platform === 'darwin' && !app.isPackaged) {
+    try {
+      app.dock.setIcon(path.join(__dirname, 'assets', 'icon.icns'));
+    } catch (err) {
+      logger.error('Failed to set Dock icon:', err);
+    }
+  }
 
   createStartupWindow();
 

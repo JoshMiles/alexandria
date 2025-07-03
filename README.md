@@ -24,8 +24,8 @@ _Alexandria_ is a modern UI for searching Library Genesis (LibGen) and DOIs (Sci
 | Platform         | Installer/ZIP Link |
 |------------------|-------------------|
 | Windows          | [Download Setup EXE]() |
-| macOS (Intel)    | [Download ZIP](https://github.com/JoshMiles/alexandria/releases/download/v0.1.59/alexandria-darwin-x64-0.1.59.zip) |
-| macOS (Apple)    | [Download ZIP](https://github.com/JoshMiles/alexandria/releases/download/v0.1.59/alexandria-darwin-arm64-0.1.59.zip) |
+| macOS (Intel)    | [Download ZIP]() |
+| macOS (Apple)    | [Download ZIP]() |
 | Linux (DEB)      | [Download DEB]() |
 | Linux (RPM)      | [Download RPM]() |
 

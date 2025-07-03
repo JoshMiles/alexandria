@@ -528,40 +528,102 @@ ipcMain.handle('test-libgen-access', async (event) => {
 });
 
 ipcMain.handle('open-logs-folder', () => {
-  const logsPath = require('path').join(__dirname, 'logs');
-  shell.openPath(logsPath);
+  shell.openPath(LOGS_DIR);
 });
 
 ipcMain.handle('get-latest-log', async () => {
   const fs = require('fs');
   const path = require('path');
-  const logPath = path.join(__dirname, 'logs', 'log-latest.txt');
+  const logPath = path.join(LOGS_DIR, 'log-latest.jsonl');
   try {
     if (fs.existsSync(logPath)) {
       return fs.readFileSync(logPath, 'utf8');
     } else {
-      return 'No log file found.';
+      return '';
     }
   } catch (e) {
-    return 'Failed to read log file.';
+    return '';
   }
 });
 
 // Patch logger to emit log lines to renderer
-const { info, warn, error, LOGS_DIR } = logger;
-function emitLogToRenderers(line) {
+const { info, warn, error, debug, verbose, log, LOGS_DIR, LEVELS } = logger;
+function emitLogToRenderers(entry) {
   const { BrowserWindow } = require('electron');
   BrowserWindow.getAllWindows().forEach(win => {
-    win.webContents.send('log-update', line);
+    win.webContents.send('log-update', entry);
   });
 }
-['info', 'warn', 'error'].forEach(level => {
+LEVELS.forEach(level => {
   const orig = logger[level];
-  logger[level] = (...args) => {
-    orig(...args);
+  logger[level] = (message, meta) => {
+    orig(message, meta);
     try {
-      const msg = args.map(a => (typeof a === 'string' ? a : JSON.stringify(a, null, 2))).join(' ');
-      emitLogToRenderers(`[${level.toUpperCase()}] ${msg}`);
+      const entry = {
+        timestamp: new Date().toISOString(),
+        level: level.toUpperCase(),
+        message,
+        ...(meta && Object.keys(meta || {}).length > 0 ? { meta } : {})
+      };
+      emitLogToRenderers(entry);
     } catch {}
   };
+});
+
+ipcMain.handle('check-for-updates', async () => {
+  logger.info('User triggered check for updates from settings.');
+  try {
+    autoUpdater.checkForUpdatesAndNotify();
+    return { success: true };
+  } catch (error) {
+    logger.error('Error checking for updates:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Patch autoUpdater log output to also go to our logger
+const origConsoleLog = console.log;
+const origConsoleWarn = console.warn;
+const origConsoleError = console.error;
+const origConsoleInfo = console.info;
+
+function patchAutoUpdaterLogging() {
+  const logUpdate = (level, ...args) => {
+    const msg = args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ');
+    if (msg && (msg.includes('checkForUpdates') || msg.includes('downloadPromise') || msg.includes('update'))) {
+      logger.info(`[autoUpdater] ${msg}`);
+    }
+  };
+  console.log = (...args) => { logUpdate('info', ...args); origConsoleLog(...args); };
+  console.warn = (...args) => { logUpdate('warn', ...args); origConsoleWarn(...args); };
+  console.error = (...args) => { logUpdate('error', ...args); origConsoleError(...args); };
+  console.info = (...args) => { logUpdate('info', ...args); origConsoleInfo(...args); };
+}
+
+patchAutoUpdaterLogging();
+
+ipcMain.handle('clear-app-data', async () => {
+  try {
+    logger.info('User triggered clear app data (store & logs) from settings.');
+    // Clear electron-store
+    if (store && typeof store.clear === 'function') {
+      store.clear();
+    }
+    // Delete all log files
+    const logDir = logger.LOGS_DIR;
+    if (logDir && fs.existsSync(logDir)) {
+      const files = fs.readdirSync(logDir);
+      for (const file of files) {
+        try {
+          fs.unlinkSync(path.join(logDir, file));
+        } catch (e) {
+          logger.error('Failed to delete log file:', { file, error: e.message });
+        }
+      }
+    }
+    return { success: true };
+  } catch (error) {
+    logger.error('Error clearing app data:', error);
+    return { success: false, error: error.message };
+  }
 });

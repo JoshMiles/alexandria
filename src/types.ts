@@ -62,6 +62,8 @@ export interface ElectronAPI {
   addLibgenMirror: (url: string) => Promise<any>;
   removeLibgenMirror: (url: string) => Promise<any>;
   testLibgenAccess: () => Promise<any>;
+  checkForUpdates: () => Promise<any>;
+  clearAppData: () => Promise<any>;
 }
 
 declare global {

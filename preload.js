@@ -32,7 +32,9 @@ contextBridge.exposeInMainWorld('electron', {
   removeLibgenMirror: (url) => ipcRenderer.invoke('remove-libgen-mirror', url),
   testLibgenAccess: () => ipcRenderer.invoke('test-libgen-access'),
   getLatestLog: () => ipcRenderer.invoke('get-latest-log'),
-  onLogUpdate: (callback) => ipcRenderer.on('log-update', (event, line) => callback(line)),
-  offLogUpdate: (callback) => ipcRenderer.removeListener('log-update', (event, line) => callback(line)),
+  onLogUpdate: (callback) => ipcRenderer.on('log-update', (event, logEntry) => callback(logEntry)),
+  offLogUpdate: (callback) => ipcRenderer.removeListener('log-update', (event, logEntry) => callback(logEntry)),
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  clearAppData: () => ipcRenderer.invoke('clear-app-data'),
 });
 

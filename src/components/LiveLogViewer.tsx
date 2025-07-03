@@ -1,9 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-const LOG_LEVELS = ['ALL', 'INFO', 'WARN', 'ERROR'];
+const LOG_LEVELS = ['ALL', 'INFO', 'WARN', 'ERROR', 'VERBOSE', 'DEBUG'];
+
+type LogEntry = {
+  timestamp: string;
+  level: string;
+  message: string;
+  meta?: any;
+};
 
 const LiveLogViewer: React.FC = () => {
-  const [log, setLog] = useState('');
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [search, setSearch] = useState('');
   const [level, setLevel] = useState('ALL');
   const [autoScroll, setAutoScroll] = useState(true);
@@ -11,16 +18,27 @@ const LiveLogViewer: React.FC = () => {
 
   useEffect(() => {
     let mounted = true;
-    window.electron.getLatestLog().then((text) => {
-      if (mounted) setLog(text);
+    window.electron.getLatestLog().then((text: string) => {
+      if (!mounted) return;
+      // Parse JSONL log file
+      const lines = text.split(/\r?\n/).filter(Boolean);
+      const parsed: LogEntry[] = [];
+      for (const line of lines) {
+        try {
+          parsed.push(JSON.parse(line));
+        } catch {}
+      }
+      setLogs(parsed);
     });
-    const handleLogUpdate = (line: string) => {
-      setLog((prev) => prev + (prev.endsWith('\n') ? '' : '\n') + line);
+    // TypeScript: window.electron.onLogUpdate is not typed for structured logs, so cast to any
+    const electronAny = window.electron as any;
+    const handleLogUpdate = (entry: LogEntry) => {
+      setLogs((prev: LogEntry[]) => [...prev, entry]);
     };
-    window.electron.onLogUpdate(handleLogUpdate);
+    electronAny.onLogUpdate(handleLogUpdate);
     return () => {
       mounted = false;
-      window.electron.offLogUpdate && window.electron.offLogUpdate(handleLogUpdate);
+      electronAny.offLogUpdate && electronAny.offLogUpdate(handleLogUpdate);
     };
   }, []);
 
@@ -28,17 +46,26 @@ const LiveLogViewer: React.FC = () => {
     if (autoScroll && logRef.current) {
       logRef.current.scrollTop = logRef.current.scrollHeight;
     }
-  }, [log, autoScroll]);
+  }, [logs, autoScroll]);
 
-  const lines = log.split(/\r?\n/).filter(Boolean);
-  const filtered = lines.filter(line => {
-    const matchesLevel = level === 'ALL' || line.includes(`[${level}]`);
-    const matchesSearch = !search || line.toLowerCase().includes(search.toLowerCase());
+  const filtered = logs.filter(entry => {
+    const matchesLevel = level === 'ALL' || entry.level === level;
+    const matchesSearch = !search ||
+      entry.message.toLowerCase().includes(search.toLowerCase()) ||
+      (entry.meta && JSON.stringify(entry.meta).toLowerCase().includes(search.toLowerCase()));
     return matchesLevel && matchesSearch;
   });
 
-  const handleClear = () => setLog('');
-  const handleCopy = () => navigator.clipboard.writeText(filtered.join('\n'));
+  const handleClear = () => setLogs([]);
+  const handleCopy = () => navigator.clipboard.writeText(filtered.map(e => formatLogLine(e)).join('\n'));
+
+  function formatLogLine(entry: LogEntry) {
+    let line = `[${entry.timestamp}] [${entry.level}] ${entry.message}`;
+    if (entry.meta && Object.keys(entry.meta).length > 0) {
+      line += ' ' + JSON.stringify(entry.meta);
+    }
+    return line;
+  }
 
   return (
     <div style={{ width: '100%' }}>
@@ -77,7 +104,7 @@ const LiveLogViewer: React.FC = () => {
         wordBreak: 'break-word',
         marginBottom: 8,
       }}>
-        {filtered.length > 0 ? filtered.join('\n') : 'No log data.'}
+        {filtered.length > 0 ? filtered.map(formatLogLine).join('\n') : 'No log data.'}
       </div>
     </div>
   );

@@ -40,8 +40,7 @@ function findAsset(assets, pattern) {
   const DEB_URL = findAsset(assets, '\\.(deb)$');
   const RPM_URL = findAsset(assets, '\\.(rpm)$');
 
-  const newTable = `
-| Windows          | [Download Setup EXE](${WIN_URL}) |
+  const newTable = `| Windows          | [Download Setup EXE](${WIN_URL}) |
 | macOS (Intel)    | [Download ZIP](${MAC_X64_ZIP_URL}) |
 | macOS (Apple)    | [Download ZIP](${MAC_ARM64_ZIP_URL}) |
 | Linux (DEB)      | [Download DEB](${DEB_URL}) |

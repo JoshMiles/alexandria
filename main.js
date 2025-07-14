@@ -587,11 +587,21 @@ const origConsoleWarn = console.warn;
 const origConsoleError = console.error;
 const origConsoleInfo = console.info;
 
+// Guard to prevent recursive logging
+let isAutoUpdaterLogging = false;
+
 function patchAutoUpdaterLogging() {
   const logUpdate = (level, ...args) => {
+    if (isAutoUpdaterLogging) return; // Prevent recursion
     const msg = args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ');
     if (msg && (msg.includes('checkForUpdates') || msg.includes('downloadPromise') || msg.includes('update'))) {
-      logger.info(`[autoUpdater] ${msg}`);
+      isAutoUpdaterLogging = true;
+      try {
+        // Use the original logger.info to avoid recursion
+        info(`[autoUpdater] ${msg}`);
+      } finally {
+        isAutoUpdaterLogging = false;
+      }
     }
   };
   console.log = (...args) => { logUpdate('info', ...args); origConsoleLog(...args); };

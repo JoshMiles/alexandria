@@ -38,6 +38,8 @@ jobs:
       - name: Make distributables (other)
         if: matrix.os != 'macos-latest'
         run: npm run make
+      - name: Copy app-update.yml to resources
+        run: node scripts/copy-update-config.js
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:

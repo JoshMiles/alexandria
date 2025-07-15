@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { Download, Book } from '../types';
+import { generateClientId } from '../utils/fileUtils';
 
 interface DownloadContextType {
   downloads: Download[];
@@ -46,16 +47,30 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   const handleDownload = useCallback((book: Book) => {
+    // If this is a file from a combined edition, generate a unique client_id
+    const clientId = generateClientId();
+    // Safely extract downloadLinks if present
+    let downloadLinks: string[] | undefined = undefined;
+    if ('downloadLinks' in book && Array.isArray((book as any).downloadLinks)) {
+      const links = (book as any).downloadLinks;
+      if (links.length > 0 && typeof links[0] === 'object' && links[0] !== null && 'url' in links[0]) {
+        downloadLinks = links.map((link: any) => link.url);
+      } else if (typeof links[0] === 'string') {
+        downloadLinks = links;
+      }
+    }
     const newDownload: Download = {
       ...book,
+      client_id: clientId,
       state: 'resolving',
       progress: { percent: 0, transferred: 0, total: 0 },
       startTime: Date.now(),
       filename: '',
       path: '',
-    };
+      ...(downloadLinks ? { downloadLinks } : {}),
+    } as Download;
     setDownloads((prevDownloads) => [newDownload, ...prevDownloads].sort((a: Download, b: Download) => b.startTime - a.startTime));
-    window.electron.download({ book });
+    window.electron.download({ book: { ...book, client_id: clientId, ...(downloadLinks ? { downloadLinks } : {}) } });
   }, []);
 
   const handleCancelDownload = useCallback((clientId: string, title: string) => {

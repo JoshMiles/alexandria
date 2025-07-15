@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { Book } from '../types';
 import { isDoi } from '../utils/fileUtils';
 import { SEARCH_CONFIG } from '../utils/constants';
@@ -26,7 +26,7 @@ interface UseSearchReturn extends SearchState {
 const searchCache = new Map<string, { results: Book[]; timestamp: number }>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-export const useSearch = (onSearchComplete?: () => void): UseSearchReturn => {
+export const useSearch = (onSearchComplete?: () => void, onStatusUpdate?: (msg: string) => void): UseSearchReturn => {
   const [state, setState] = useState<SearchState>({
     query: '',
     results: [],
@@ -57,6 +57,37 @@ export const useSearch = (onSearchComplete?: () => void): UseSearchReturn => {
     setState(prev => ({ ...prev, query }));
   }, []);
 
+  useEffect(() => {
+    if (!onStatusUpdate) return;
+    const handler = (msg: string) => onStatusUpdate(msg);
+    window.electron.on('search-status', handler);
+    return () => {
+      window.electron.on('search-status', () => {});
+    };
+  }, [onStatusUpdate]);
+
+  // --- Streaming search result handling ---
+  useEffect(() => {
+    // Handler for streamed book results
+    const handleSearchResult = (book: Book) => {
+      setState(prev => ({
+        ...prev,
+        results: [...prev.results, book],
+        unfilteredResults: [...prev.unfilteredResults, book],
+        loading: false,
+        noResults: false,
+      }));
+    };
+    window.electron.on('search-result', handleSearchResult);
+    return () => {
+      if ((window.electron as any).off) {
+        (window.electron as any).off('search-result', handleSearchResult);
+      } else {
+        window.electron.on('search-result', () => {});
+      }
+    };
+  }, []);
+
   const performSearch = useCallback(async (query: string) => {
     if (!query.trim()) {
       clearResults();
@@ -69,46 +100,23 @@ export const useSearch = (onSearchComplete?: () => void): UseSearchReturn => {
     }
     abortControllerRef.current = new AbortController();
 
-    console.log('Starting search for:', query);
+    // Clear results and set loading
     setState(prev => ({
       ...prev,
       query: query.trim(),
       loading: true,
       error: '',
       noResults: false,
+      results: [],
+      unfilteredResults: [],
+      doiResult: null,
+      isDoiSearch: false,
     }));
 
     try {
-      console.log('Calling electron search...');
-      const results = await window.electron.search(query);
-      console.log('Search results received:', results);
-      
-      // Cache results
-      const cacheKey = query.toLowerCase().trim();
-      searchCache.set(cacheKey, { results, timestamp: Date.now() });
-
-      const isDoiQuery = isDoi(query);
-      if (isDoiQuery && results.length > 0) {
-        console.log('Setting DOI result');
-        setState(prev => ({
-          ...prev,
-          doiResult: results[0],
-          isDoiSearch: true,
-          loading: false,
-        }));
-      } else {
-        console.log('Setting regular results:', results.length);
-        setState(prev => ({
-          ...prev,
-          unfilteredResults: results,
-          results,
-          isDoiSearch: false,
-          loading: false,
-          noResults: results.length === 0,
-        }));
-      }
-      
-      // Notify that search is complete
+      // Start the search (which will stream results)
+      await window.electron.search(query);
+      // No need to set results here; they will be appended as streamed
       if (onSearchComplete) {
         onSearchComplete();
       }
@@ -117,14 +125,11 @@ export const useSearch = (onSearchComplete?: () => void): UseSearchReturn => {
       if (error instanceof Error && error.name === 'AbortError') {
         return; // Search was cancelled
       }
-      
       setState(prev => ({
         ...prev,
         loading: false,
         error: 'Failed to search. Please try again.',
       }));
-      
-      // Notify that search is complete even on error
       if (onSearchComplete) {
         onSearchComplete();
       }

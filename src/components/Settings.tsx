@@ -32,6 +32,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateMessage, setUpdateMessage] = useState('');
   const [latestRelease, setLatestRelease] = useState('');
+  const [libraryGenesisPlusFallback, setLibraryGenesisPlusFallback] = useState(false);
 
   // Theme customizer variables and helpers (moved inside component for access to t and theme)
   const THEME_VARIABLES = [
@@ -97,6 +98,12 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
         if (data && data.tag_name) setLatestRelease(data.tag_name);
       })
       .catch(() => setLatestRelease('Unavailable'));
+    // Fetch Library Genesis+ fallback status
+    if (window.electron.invoke) {
+      window.electron.invoke('get-library-genesis-plus-fallback-status').then((active: boolean) => {
+        setLibraryGenesisPlusFallback(!!active);
+      });
+    }
   }, []);
 
   const handleResetAccess = async () => {
@@ -230,48 +237,6 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                   {downloadLocation ? downloadLocation : t('settings.selectFolder')}
                 </button>
               </div>
-            </div>
-            {/* LibGen Access */}
-            <div className="settings-panel settings-grid-item libgen-access-panel" style={{ gridColumn: '1 / -1' }}>
-              <div className="panel-header">
-                <span className="panel-title">{t('libgen.access')}</span>
-                <span className="panel-tooltip" title="Manage LibGen mirrors and access."><FiInfo /></span>
-              </div>
-              {libgenAccessInfo ? (
-                <>
-                  <div className="libgen-access-status-row">
-                    <span><strong>{t('libgen.currentMirror')}:</strong> <span className="current-method">{libgenAccessInfo.currentMethod && libgenAccessInfo.currentMethod.mirror ? libgenAccessInfo.currentMethod.mirror : t('libgen.autoDetect')}</span></span>
-                    <span><strong>{t('libgen.lastError')}:</strong> <span className="last-error">{libgenAccessInfo.lastError || t('libgen.none')}</span></span>
-                  </div>
-                  <div className="libgen-access-row">
-                    <strong>{t('libgen.mirrors')}:</strong>
-                    {libgenAccessInfo.mirrors.map((mirror: string) => {
-                      const isCurrent = libgenAccessInfo.currentMethod && libgenAccessInfo.currentMethod.mirror === mirror;
-                      return (
-                        <span key={mirror} className={'libgen-chip' + (isCurrent ? ' current' : '')}>
-                          {mirror}
-                          <button className="remove-btn" title={t('libgen.remove')} onClick={() => handleRemoveMirror(mirror)}><FiX /></button>
-                        </span>
-                      );
-                    })}
-                  </div>
-                  <div className="libgen-access-add-row">
-                    <input type="text" placeholder={t('libgen.addMirrorPlaceholder')} value={newMirror} onChange={e => setNewMirror(e.target.value)} />
-                    <button onClick={handleAddMirror} title={t('libgen.addMirror')}><FiPlus /></button>
-                  </div>
-                  <div className="libgen-access-divider" />
-                  <div className="libgen-access-actions">
-                    <button className="reset-button" onClick={handleTestAccess} disabled={testingAccess}>
-                      {testingAccess ? t('libgen.testing') : t('libgen.testAccess')}
-                    </button>
-                    <button className="reset-button" onClick={handleResetAccess} disabled={resettingAccess}>
-                      {resettingAccess ? t('libgen.resetting') : t('libgen.resetAccessMethod')}
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <p>{t('libgen.loadingAccessInfo')}</p>
-              )}
             </div>
             {/* Logger (full width) */}
             <div className="settings-panel settings-logger-panel">

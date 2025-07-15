@@ -29,11 +29,15 @@ const StartupContent = () => {
   const { t } = useI18n();
   const [message, setMessage] = useState(t('app.loading'));
   const [progress, setProgress] = useState<number | null>(null);
+  const [showFallbackWarning, setShowFallbackWarning] = useState(false);
 
   useEffect(() => {
     window.electron.on('update-message', (newMessage) => {
       setMessage(newMessage);
       setProgress(parseProgress(newMessage));
+      if (typeof newMessage === 'string' && newMessage.includes('libgen.bz fallback')) {
+        setShowFallbackWarning(true);
+      }
     });
 
     // Listen for LibGen access check messages
@@ -47,6 +51,9 @@ const StartupContent = () => {
                  newMessage.includes('Found working mirror') ||
                  newMessage.includes('All LibGen mirrors are currently unavailable')) {
         setProgress(null); // Use indeterminate for these messages
+      }
+      if (typeof newMessage === 'string' && newMessage.includes('libgen.bz fallback')) {
+        setShowFallbackWarning(true);
       }
     });
   }, []);
@@ -69,6 +76,20 @@ const StartupContent = () => {
             </div>
           )}
         </div>
+        {showFallbackWarning && (
+          <div style={{
+            background: '#ffeeba',
+            color: '#856404',
+            border: '1px solid #ffeeba',
+            padding: '0.75rem 1rem',
+            borderRadius: 6,
+            marginBottom: '1rem',
+            fontSize: '1.05rem',
+            textAlign: 'center',
+          }}>
+            <b>Warning:</b> All main LibGen mirrors are down. Searches will use the <b>libgen.bz fallback</b> (ads filtered, may differ from main LibGen).
+          </div>
+        )}
         <div className="startup-status">{message}</div>
       </div>
     </div>

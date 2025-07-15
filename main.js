@@ -5,13 +5,27 @@ const fs = require('fs');
 const { pipeline } = require('stream');
 const os = require('os');
 const https = require('https');
-const { search, getDownloadLinks, resolveDirectDownloadLink, getSciHubDownloadLink, getLibgenAccessInfo, resetLibgenAccessMethod, addLibgenMirror, removeLibgenMirror, testLibgenAccess } = require('./dist/backend.js');
+const {
+  search,
+  getDownloadLinks,
+  resolveDirectDownloadLink,
+  getSciHubDownloadLink,
+  getLibgenAccessInfo,
+  getLibgenStatusFromOpenSlum,
+  getLibgenPlusStatusFromOpenSlum,
+  testLibgenAccess,
+  resetLibgenAccessMethod,
+  addLibgenMirror,
+  removeLibgenMirror
+} = require('./backend/libgen-api.js');
 const { autoUpdater } = require('electron-updater');
 
 let store;
 let downloadItems = {};
 let mainWindow;
 let startupWindow;
+
+global.libraryGenesisPlusFallback = false;
 
 logger.info('App starting...');
 
@@ -95,11 +109,14 @@ app.whenReady().then(async () => {
         const result = await testLibgenAccess(startupWindow, logger);
         if (result.success) {
           logger.info(`LibGen access check successful. Working mirror: ${result.workingMirror}`);
+          global.libraryGenesisPlusFallback = false;
         } else {
           logger.warn(`LibGen access check failed: ${result.error}`);
+          global.libraryGenesisPlusFallback = true;
         }
       } catch (error) {
         logger.error('Error during LibGen access check:', error);
+        global.libraryGenesisPlusFallback = true;
       }
       setTimeout(() => {
         if (startupWindow) {
@@ -241,7 +258,7 @@ ipcMain.handle('download', async (event, { book }) => {
   const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
   const downloadsPath = app.getPath('downloads');
   const rawFileName = `${book.title} - ${book.author} (${book.year}) (${book.language}).${book.extension}`;
-  const sanitizedFileName = rawFileName.replace(/[^\w\s.-]/g, '').trim();
+  const sanitizedFileName = rawFileName.replace(/[^ 0-9\w\s.-]/g, '').trim();
   const filePath = path.join(downloadsPath, sanitizedFileName);
 
   const downloadItem = {
@@ -252,7 +269,7 @@ ipcMain.handle('download', async (event, { book }) => {
     progress: {
       percent: 0,
       transferred: 0,
-      total: 0,
+      total: book.filesize || 0,
     },
     startTime: Date.now(),
   };
@@ -333,25 +350,29 @@ ipcMain.handle('download', async (event, { book }) => {
     }
   }
 
-  // Regular Download Logic
-  for (const mirror of book.mirror_links) {
+  // Use file-specific downloadLinks and mirror if present
+  let downloadLinks = book.downloadLinks || [];
+  if (!Array.isArray(downloadLinks)) downloadLinks = [downloadLinks];
+  let mirror = book.mirror || (book.downloadLinks && book.downloadLinks.length > 0 && book.downloadLinks[0].includes('libgen.bz') ? 'https://libgen.bz' : undefined);
+
+  if (downloadLinks.length === 0 && book.mirror_links && book.mirror_links.length > 0) {
+    // fallback to mirror_links if no file-specific downloadLinks
+    downloadLinks = book.mirror_links;
+  }
+
+  for (const link of downloadLinks) {
     try {
-      const downloadPageUrl = mirror.startsWith('http')
-        ? mirror
-        : `https://libgen.li/${mirror}`;
-      
-      logger.info(`Attempting to get download links from mirror: ${downloadPageUrl}`);
-      const downloadLinks = await getDownloadLinks(downloadPageUrl, logger);
-      if (!downloadLinks || downloadLinks.length === 0) {
+      const downloadPageUrl = link.startsWith('http') ? link : `${mirror || 'https://libgen.bz'}${link}`;
+      logger.info(`Attempting to get download links from: ${downloadPageUrl}`);
+      const resolvedLinks = await getDownloadLinks(downloadPageUrl, mirror);
+      if (!resolvedLinks || resolvedLinks.length === 0) {
         throw new Error('No download links found');
       }
-
-      logger.info(`Resolving direct download link from: ${downloadLinks[0]}`);
-      const directLink = await resolveDirectDownloadLink(downloadLinks[0], logger);
+      logger.info(`Resolving direct download link from: ${resolvedLinks[0]}`);
+      const directLink = await resolveDirectDownloadLink(resolvedLinks[0], mirror);
       if (!directLink) {
         throw new Error('Could not resolve direct download link');
       }
-
       if (directLink.includes('slow_download')) {
         logger.info(`Handling slow download for "${book.title}", opening in browser.`);
         shell.openExternal(directLink);
@@ -364,12 +385,10 @@ ipcMain.handle('download', async (event, { book }) => {
         }
         return;
       }
-
       logger.info(`Starting download for "${book.title}" from direct link.`);
       const downloadStream = got.stream(directLink);
       const fileWriterStream = fs.createWriteStream(filePath);
       downloadItems[book.client_id] = downloadStream;
-
       const currentDownloads = store.get('downloads', []);
       const item = currentDownloads.find((d) => d.client_id === book.client_id);
       if (item) {
@@ -377,7 +396,6 @@ ipcMain.handle('download', async (event, { book }) => {
         store.set('downloads', currentDownloads);
         win.webContents.send('downloads-updated', currentDownloads);
       }
-
       downloadStream.on('downloadProgress', (progress) => {
         const currentDownloads = store.get('downloads', []);
         const item = currentDownloads.find((d) => d.client_id === book.client_id);
@@ -386,7 +404,7 @@ ipcMain.handle('download', async (event, { book }) => {
           item.progress = {
             percent: progress.total ? progress.percent : 0,
             transferred: progress.transferred,
-            total: progress.total,
+            total: book.filesize || progress.total || 0,
           };
           store.set('downloads', currentDownloads);
           win.webContents.send('download-progress', {
@@ -395,7 +413,6 @@ ipcMain.handle('download', async (event, { book }) => {
           });
         }
       });
-
       pipeline(downloadStream, fileWriterStream, (error) => {
         const finalDownloads = store.get('downloads', []);
         const item = finalDownloads.find((d) => d.client_id === book.client_id);
@@ -412,15 +429,15 @@ ipcMain.handle('download', async (event, { book }) => {
         }
         delete downloadItems[book.client_id];
       });
-      return; // Exit the loop if download starts successfully
+      return; // Only try the first valid link
     } catch (error) {
-      logger.error(`Error with mirror ${mirror} for book "${book.title}":`, error);
-      // Continue to the next mirror
+      logger.error(`Error with download link ${link} for book "${book.title}":`, error);
+      // Continue to the next link
     }
   }
 
-  // If all mirrors fail
-  logger.error(`All mirrors failed for book: "${book.title}"`);
+  // If all links fail
+  logger.error(`All download links failed for book: "${book.title}"`);
   const finalDownloads = store.get('downloads', []);
   const item = finalDownloads.find((d) => d.client_id === book.client_id);
   if (item) {
@@ -636,4 +653,8 @@ ipcMain.handle('clear-app-data', async () => {
     logger.error('Error clearing app data:', error);
     return { success: false, error: error.message };
   }
+});
+
+ipcMain.handle('get-library-genesis-plus-fallback-status', async () => {
+  return !!global.libraryGenesisPlusFallback;
 });

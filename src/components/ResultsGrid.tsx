@@ -14,10 +14,10 @@ interface ResultsGridProps {
 }
 
 const ResultsGrid: React.FC<ResultsGridProps> = React.memo(({ 
-  results, 
+  results = [], 
   onDownload, 
   libgenUrl, 
-  downloads, 
+  downloads = [], 
   expandedCard, 
   setExpandedCard 
 }) => {
@@ -38,7 +38,8 @@ const ResultsGrid: React.FC<ResultsGridProps> = React.memo(({
 
   // Memoize displayed results
   const displayedResults = useMemo(() => {
-    return expandedCard ? results.filter(book => book.client_id === expandedCard) : results;
+    const safeResults = Array.isArray(results) ? results : [];
+    return expandedCard ? safeResults.filter(book => book.client_id === expandedCard) : safeResults;
   }, [expandedCard, results]);
 
   // Memoize grid classes
@@ -63,7 +64,8 @@ const ResultsGrid: React.FC<ResultsGridProps> = React.memo(({
 
   // Memoize the BookCard components to prevent unnecessary re-renders
   const bookCards = useMemo(() => {
-    return displayedResults.map((book) => {
+    const safeDisplayedResults = Array.isArray(displayedResults) ? displayedResults : [];
+    return safeDisplayedResults.map((book) => {
       const download = downloadsMap.get(book.client_id);
       return (
         <div
@@ -79,6 +81,7 @@ const ResultsGrid: React.FC<ResultsGridProps> = React.memo(({
             downloadState={download?.state}
             isExpanded={expandedCard === book.client_id}
             onToggleExpand={() => handleCardClick(book.client_id)}
+            isLibgenBz={book.source === 'libgen.bz'}
           />
         </div>
       );

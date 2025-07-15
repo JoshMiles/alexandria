@@ -19,6 +19,16 @@ export interface Book {
   averageRating?: number;
   thumbnail?: string;
   doi?: string;
+  files?: Array<{
+    fileId: string;
+    extension: string;
+    filesize: number;
+    downloadLinks: Array<{ url: string; label: string }>;
+    mirror: string;
+    source: string;
+    locator: string;
+  }>;
+  source?: string;
 }
 
 export interface Download extends Book {
@@ -64,6 +74,7 @@ export interface ElectronAPI {
   testLibgenAccess: () => Promise<any>;
   checkForUpdates: () => Promise<any>;
   clearAppData: () => Promise<any>;
+  invoke?: (channel: string, ...args: any[]) => Promise<any>;
 }
 
 declare global {

@@ -15,6 +15,7 @@ import TitleBar from './components/TitleBar';
 import DoiResult from './components/DoiResult';
 import './styles.css';
 import { v4 as uuidv4 } from 'uuid';
+import SkeletonBookCard from './components/SkeletonBookCard';
 
 const App: React.FC = () => (
   <I18nProvider>
@@ -105,7 +106,7 @@ const AppContent = () => {
     searchImmediate,
     clearResults,
     setQuery
-  } = useSearch(handleSearchComplete);
+  } = useSearch(handleSearchComplete, setSearchStatus);
 
   const handleBack = useCallback(() => {
     clearResults();
@@ -274,6 +275,38 @@ const AppContent = () => {
 
   const showWelcomeMessage = !loading && !error && !noResults && resultsWithIds.length === 0 && !doiResult && !(languageFilter || fileTypeFilter);
 
+  const [visibleCount, setVisibleCount] = useState(10);
+
+  // Reset visibleCount on new search
+  useEffect(() => {
+    setVisibleCount(10);
+  }, [resultsWithIds.length === 0]);
+
+  // Only show up to visibleCount results
+  const pagedResults = useMemo(() => resultsWithIds.slice(0, visibleCount), [resultsWithIds, visibleCount]);
+
+  // Optionally, auto-increment visibleCount as new results arrive in batches
+  useEffect(() => {
+    if (resultsWithIds.length > visibleCount && resultsWithIds.length % 10 === 0) {
+      setVisibleCount(prev => prev + 10);
+    }
+  }, [resultsWithIds.length, visibleCount]);
+
+  // Responsive skeleton grid: calculate how many skeletons to show based on window size
+  const [skeletonCount, setSkeletonCount] = useState(6);
+  useEffect(() => {
+    function updateSkeletonCount() {
+      const cardWidth = 240; // px, including gap
+      const gridGap = 32; // px
+      const columns = Math.max(1, Math.floor((window.innerWidth - 400) / (cardWidth + gridGap)));
+      const rows = Math.max(2, Math.ceil((window.innerHeight - 250) / (320 + gridGap)));
+      setSkeletonCount(columns * rows);
+    }
+    updateSkeletonCount();
+    window.addEventListener('resize', updateSkeletonCount);
+    return () => window.removeEventListener('resize', updateSkeletonCount);
+  }, []);
+
   return (
     <>
       <div className="left-panel">
@@ -316,13 +349,6 @@ const AppContent = () => {
                   />
                 </div>
               </div>
-              
-              {(loading || isSearching) && (
-                <div className="loading-container">
-                  <div className="spinner"></div>
-                  <p className="status-text">{searchStatus || 'Searching...'}</p>
-                </div>
-              )}
               
               {error && <p className="error-message">{error}</p>}
               {noResults && <p className="no-results-message">No results found for "{query}"</p>}
@@ -391,15 +417,37 @@ const AppContent = () => {
               )}
               
               {doiResult && <DoiResult book={doiResult} onDownload={handleDownload} />}
-              {resultsWithIds.length > 0 && (
+              {/* Show ResultsGrid as soon as results are available, even if loading */}
+              {pagedResults.length > 0 && (
                 <ResultsGrid
-                  results={resultsWithIds}
+                  results={pagedResults || []}
                   onDownload={handleDownload}
                   libgenUrl={libgenUrl}
                   downloads={downloads}
                   expandedCard={expandedCard}
                   setExpandedCard={setExpandedCard}
                 />
+              )}
+              {/* Show More button for batch streaming */}
+              {resultsWithIds.length > visibleCount && (
+                <div style={{ textAlign: 'center', margin: '2rem 0' }}>
+                  <button className="show-more-btn" onClick={() => setVisibleCount(visibleCount + 10)}>
+                    Show More
+                  </button>
+                </div>
+              )}
+              
+              {/* Only show loading spinner if no results yet */}
+              {loading && resultsWithIds.length === 0 && (
+                <div className="loading-container">
+                  <div className="spinner"></div>
+                  <p className="status-text">{searchStatus || 'Searching...'}</p>
+                  <div className="skeleton-grid" style={{ width: '100%', maxWidth: '1200px', margin: '2rem auto 0 auto' }}>
+                    {[...Array(skeletonCount)].map((_, i) => (
+                      <SkeletonBookCard key={i} />
+                    ))}
+                  </div>
+                </div>
               )}
                 </>
               )}

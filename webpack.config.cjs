@@ -153,7 +153,7 @@ module.exports = [
   },
   {
     mode: 'production',
-    entry: './backend/libgen-api.ts',
+    entry: './backend/libgen-api.js',
     target: 'electron-main',
     output: {
       path: path.resolve(__dirname, 'dist'),

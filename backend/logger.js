@@ -22,6 +22,11 @@ if (!fs.existsSync(LOGS_DIR)) {
   fs.mkdirSync(LOGS_DIR, { recursive: true });
 }
 
+const LOGS_RESPONSES_DIR = path.join(LOGS_DIR, 'responses');
+if (!fs.existsSync(LOGS_RESPONSES_DIR)) {
+  fs.mkdirSync(LOGS_RESPONSES_DIR, { recursive: true });
+}
+
 function getTimestamp() {
   return new Date().toISOString();
 }
@@ -109,6 +114,31 @@ function verbose(message, meta) {
   log('verbose', message, meta);
 }
 
+// Add a function to clear all files in the logs directory except for log-latest.jsonl
+function clearTempLogs() {
+  try {
+    // Clear .tmp files in main logs dir
+    const files = fs.readdirSync(LOGS_DIR);
+    for (const file of files) {
+      if (file !== 'log-latest.jsonl' && file.endsWith('.tmp')) {
+        fs.unlinkSync(path.join(LOGS_DIR, file));
+      }
+    }
+    // Clear all files in responses subdir
+    if (fs.existsSync(LOGS_RESPONSES_DIR)) {
+      const respFiles = fs.readdirSync(LOGS_RESPONSES_DIR);
+      for (const file of respFiles) {
+        fs.unlinkSync(path.join(LOGS_RESPONSES_DIR, file));
+      }
+    }
+  } catch (err) {
+    console.error('[LOGGER] Failed to clear temp logs:', err);
+  }
+}
+
+// Call clearTempLogs on startup
+clearTempLogs();
+
 module.exports = {
   log,
   info,
@@ -117,5 +147,7 @@ module.exports = {
   debug,
   verbose,
   LOGS_DIR,
+  LOGS_RESPONSES_DIR,
   LEVELS,
+  clearTempLogs,
 }; 

@@ -29,5 +29,5 @@ run('git', ['commit', '-m', `chore: prepare for release`], 'Committing staged ch
 run('npm', ['version', bump], `Bumping version with '${bump}'`);
 run('git', ['push'], 'Pushing commit');
 run('git', ['push', '--tags'], 'Pushing tags');
-
+//
 console.log(chalk.bold.green('Release script complete. Electron Forge and GitHub Actions will handle packaging and release.')); 

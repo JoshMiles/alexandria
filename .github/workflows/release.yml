@@ -26,10 +26,10 @@ jobs:
         with:
           node-version: '18'
       - name: Install dependencies
-        run: |
-          export LC_ALL=en_US.UTF-8
-          export LANG=en_US.UTF-8
-          npm install
+        env:
+          LC_ALL: en_US.UTF-8
+          LANG: en_US.UTF-8
+        run: npm install
       - name: Build app (webpack)
         run: npm run build
       - name: Make distributables (macOS x64)

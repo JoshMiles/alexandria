@@ -5,27 +5,30 @@ const fs = require('fs');
 const { pipeline } = require('stream');
 const os = require('os');
 const https = require('https');
+const axios = require('axios');
+const { CookieJar } = require('tough-cookie');
+const { wrapper } = require('axios-cookiejar-support');
 const {
-  search,
-  getDownloadLinks,
-  resolveDirectDownloadLink,
-  getSciHubDownloadLink,
-  getLibgenAccessInfo,
-  getLibgenStatusFromOpenSlum,
-  getLibgenPlusStatusFromOpenSlum,
-  testLibgenAccess,
-  resetLibgenAccessMethod,
-  addLibgenMirror,
-  removeLibgenMirror
-} = require('./backend/libgen-api.js');
+  saveTempLogFile,
+  extractIsbns,
+  parseFilename,
+  isValidMetadata,
+  scoreEdition,
+  gotWithLog,
+  fetchFileMetadata,
+  fetchFileDownloadLinks,
+  fetchBibtexMetadata,
+  fetchAdsPhpMetadataAndCover,
+  fetchLibgenFileCountsByIsbns, // <-- add import
+  fetchLibgenFileCountByIsbn,
+} = require('./backend/alexandria-lib.js');
 const { autoUpdater } = require('electron-updater');
+const cheerio = require('cheerio');
 
 let store;
 let downloadItems = {};
 let mainWindow;
 let startupWindow;
-
-global.libraryGenesisPlusFallback = false;
 
 logger.info('App starting...');
 
@@ -37,7 +40,7 @@ function createStartupWindow() {
     frame: false,
     icon: path.join(__dirname, 'assets', process.platform === 'darwin' ? 'icon.icns' : process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
     webPreferences: {
-      preload: path.join(__dirname, 'dist/preload.js'),
+      preload: path.join(__dirname, 'preload.js'), // use root preload
       contextIsolation: true,
       nodeIntegration: false,
     },
@@ -59,24 +62,27 @@ function createWindow() {
     trafficLightPosition: { x: 15, y: 15 },
     icon: path.join(__dirname, 'assets', process.platform === 'darwin' ? 'icon.icns' : process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
     webPreferences: {
-      preload: path.join(__dirname, 'dist/preload.js'),
+      preload: path.join(__dirname, 'preload.js'), // use root preload
       contextIsolation: true,
       nodeIntegration: false,
     },
-    backgroundColor: '#121212',
+    backgroundColor: '#f7f8fa', // Set to match app background
   });
 
   const version = app.getVersion();
   mainWindow.setTitle(`Alexandria - ${version}`);
   mainWindow.loadFile('dist/index.html');
-  
-  // Maximize the window by default
   mainWindow.maximize();
-  
   mainWindow.on('closed', () => {
     logger.info('Main window closed.');
     mainWindow = null;
   });
+
+  // Close the splash/startup window if it exists
+  if (startupWindow) {
+    startupWindow.close();
+    startupWindow = null;
+  }
 }
 
 app.whenReady().then(async () => {
@@ -102,31 +108,6 @@ app.whenReady().then(async () => {
 
   createStartupWindow();
 
-  async function startLibgenCheck() {
-    if (startupWindow) {
-      logger.info('Performing LibGen access check...');
-      try {
-        const result = await testLibgenAccess(startupWindow, logger);
-        if (result.success) {
-          logger.info(`LibGen access check successful. Working mirror: ${result.workingMirror}`);
-          global.libraryGenesisPlusFallback = false;
-        } else {
-          logger.warn(`LibGen access check failed: ${result.error}`);
-          global.libraryGenesisPlusFallback = true;
-        }
-      } catch (error) {
-        logger.error('Error during LibGen access check:', error);
-        global.libraryGenesisPlusFallback = true;
-      }
-      setTimeout(() => {
-        if (startupWindow) {
-          startupWindow.close();
-        }
-        createWindow();
-      }, 1000);
-    }
-  }
-
   const isMac = process.platform === 'darwin';
   if (app.isPackaged) {
     // Electron Forge auto-updater logic
@@ -150,7 +131,7 @@ app.whenReady().then(async () => {
       sendUpdateMessage('No updates available.');
       if (!updateHandled) {
         updateHandled = true;
-        setTimeout(startLibgenCheck, 1000);
+        setTimeout(createWindow, 1000);
       }
     });
     autoUpdater.on('update-downloaded', async (info) => {
@@ -175,7 +156,7 @@ app.whenReady().then(async () => {
         sendUpdateMessage('Update ready. Please replace the app and relaunch.');
         if (!updateHandled) {
           updateHandled = true;
-          setTimeout(startLibgenCheck, 1000);
+          setTimeout(createWindow, 1000);
         }
       } else {
         sendUpdateMessage('Update downloaded. Restarting...');
@@ -189,7 +170,7 @@ app.whenReady().then(async () => {
       sendUpdateMessage('Update check failed.');
       if (!updateHandled) {
         updateHandled = true;
-        setTimeout(startLibgenCheck, 1000);
+        setTimeout(createWindow, 1000);
       }
     });
     // Start update check
@@ -198,12 +179,12 @@ app.whenReady().then(async () => {
     setTimeout(() => {
       if (!updateHandled) {
         updateHandled = true;
-        startLibgenCheck();
+        createWindow();
       }
     }, 20000);
   } else {
     // In development, skip update check but still do LibGen check
-    setTimeout(startLibgenCheck, 1000);
+    setTimeout(createWindow, 1000);
   }
 
   app.on('activate', () => {
@@ -257,193 +238,93 @@ ipcMain.handle('download', async (event, { book }) => {
   logger.info(`Download request for book: "${book.title}" (ID: ${book.client_id})`);
   const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
   const downloadsPath = app.getPath('downloads');
-  const rawFileName = `${book.title} - ${book.author} (${book.year}) (${book.language}).${book.extension}`;
-  const sanitizedFileName = rawFileName.replace(/[^ 0-9\w\s.-]/g, '').trim();
+  const title = book.title || 'Unknown';
+  const author = book.author || 'Unknown';
+  const year = book.year || 'Unknown';
+  const language = book.language || 'Unknown';
+  const ext = book.extension || 'bin';
+  const rawFileName = `${title} - ${author} (${year}) [${language}].${ext}`;
+  const sanitizedFileName = rawFileName.replace(/[^ 0-9\w\s.\-\[\]]/g, '').trim();
   const filePath = path.join(downloadsPath, sanitizedFileName);
 
-  const downloadItem = {
-    ...book,
-    filename: sanitizedFileName,
-    path: filePath,
-    state: 'resolving',
-    progress: {
-      percent: 0,
-      transferred: 0,
-      total: book.filesize || 0,
-    },
-    startTime: Date.now(),
-  };
+  // 1. Setup axios with cookie jar
+  const jar = new CookieJar();
+  const client = wrapper(axios.create({ jar }));
 
-  let downloads = store.get('downloads', []);
-  downloads.push(downloadItem);
-  store.set('downloads', downloads);
-  win.webContents.send('downloads-updated', downloads);
-  logger.info(`Download item added and updated in store for "${book.title}"`);
-
-  // DOI Download Logic
-  if (book.doi) {
-    try {
-      logger.info(`Attempting to download DOI: ${book.doi}`);
-      const directLink = await getSciHubDownloadLink(book.doi, logger);
-      if (!directLink) {
-        throw new Error('Could not resolve Sci-Hub download link');
+  try {
+    // 2. Fetch ads.php to get cookies and the get.php link
+    const adsUrl = `https://libgen.bz/ads.php?md5=${book.md5}`;
+    const adsRes = await client.get(adsUrl, { responseType: 'text' });
+    const html = adsRes.data;
+    // Use cheerio to parse and filter <a> tags for the correct get.php link
+    const $ = cheerio.load(html);
+    let foundLink = null;
+    $('a[href]').each((_, el) => {
+      const href = $(el).attr('href');
+      if (
+        href &&
+        href.startsWith('get.php?') &&
+        href.includes(`md5=${book.md5}`) &&
+        href.includes('key=')
+      ) {
+        foundLink = href;
+        return false; // break loop
       }
+    });
+    if (!foundLink) throw new Error('Could not find get.php download link on ads.php page');
+    const getUrl = `https://libgen.bz/${foundLink}`;
 
-      logger.info(`Starting download for "${book.title}" from Sci-Hub link: ${directLink}`);
-      const downloadStream = got.stream(directLink);
-      const fileWriterStream = fs.createWriteStream(filePath);
-      downloadItems[book.client_id] = downloadStream;
-
-      const currentDownloads = store.get('downloads', []);
-      const item = currentDownloads.find((d) => d.client_id === book.client_id);
-      if (item) {
-        item.state = 'downloading';
-        store.set('downloads', currentDownloads);
-        win.webContents.send('downloads-updated', currentDownloads);
+    // 3. Download the file using the cookies from ads.php
+    const fileRes = await client.get(getUrl, {
+      responseType: 'stream',
+      headers: {
+        'Referer': adsUrl,
+        'User-Agent': 'Mozilla/5.0 (Electron Alexandria)'
       }
+    });
 
-      downloadStream.on('downloadProgress', (progress) => {
-        const currentDownloads = store.get('downloads', []);
-        const item = currentDownloads.find((d) => d.client_id === book.client_id);
-        if (item) {
-          item.state = 'downloading';
-          item.progress = {
-            percent: progress.total ? progress.percent : 0,
-            transferred: progress.transferred,
-            total: progress.total,
-          };
-          store.set('downloads', currentDownloads);
-          win.webContents.send('download-progress', {
-            clientId: book.client_id,
-            progress: item.progress,
-          });
+    // 4. Save the file to disk and track progress
+    const total = Number(fileRes.headers['content-length']) || 0;
+    let transferred = 0;
+    fileRes.data.on('data', chunk => {
+      transferred += chunk.length;
+      win.webContents.send('download-progress', {
+        clientId: book.client_id,
+        progress: {
+          percent: total ? transferred / total : 0,
+          transferred,
+          total
         }
       });
+    });
 
-      pipeline(downloadStream, fileWriterStream, (error) => {
-        const finalDownloads = store.get('downloads', []);
-        const item = finalDownloads.find((d) => d.client_id === book.client_id);
-        if (item) {
-          if (error) {
-            item.state = 'failed';
-            logger.error(`Download failed for "${book.title}": ${error.message}`);
-          } else {
-            item.state = 'completed';
-            logger.info(`Download completed for "${book.title}"`);
-          }
-          store.set('downloads', finalDownloads);
-          win.webContents.send('downloads-updated', finalDownloads);
-        }
-        delete downloadItems[book.client_id];
-      });
-      return;
-    } catch (error) {
-      logger.error(`Error downloading DOI ${book.doi}:`, error);
-      const finalDownloads = store.get('downloads', []);
-      const item = finalDownloads.find((d) => d.client_id === book.client_id);
-      if (item) {
-        item.state = 'failed';
-        store.set('downloads', finalDownloads);
-        win.webContents.send('downloads-updated', finalDownloads);
-      }
-      return;
-    }
-  }
+    await new Promise((resolve, reject) => {
+      const stream = fs.createWriteStream(filePath);
+      fileRes.data.pipe(stream);
+      fileRes.data.on('end', resolve);
+      fileRes.data.on('error', reject);
+    });
 
-  // Use file-specific downloadLinks and mirror if present
-  let downloadLinks = book.downloadLinks || [];
-  if (!Array.isArray(downloadLinks)) downloadLinks = [downloadLinks];
-  let mirror = book.mirror || (book.downloadLinks && book.downloadLinks.length > 0 && book.downloadLinks[0].includes('libgen.bz') ? 'https://libgen.bz' : undefined);
-
-  if (downloadLinks.length === 0 && book.mirror_links && book.mirror_links.length > 0) {
-    // fallback to mirror_links if no file-specific downloadLinks
-    downloadLinks = book.mirror_links;
-  }
-
-  for (const link of downloadLinks) {
-    try {
-      const downloadPageUrl = link.startsWith('http') ? link : `${mirror || 'https://libgen.bz'}${link}`;
-      logger.info(`Attempting to get download links from: ${downloadPageUrl}`);
-      const resolvedLinks = await getDownloadLinks(downloadPageUrl, mirror);
-      if (!resolvedLinks || resolvedLinks.length === 0) {
-        throw new Error('No download links found');
-      }
-      logger.info(`Resolving direct download link from: ${resolvedLinks[0]}`);
-      const directLink = await resolveDirectDownloadLink(resolvedLinks[0], mirror);
-      if (!directLink) {
-        throw new Error('Could not resolve direct download link');
-      }
-      if (directLink.includes('slow_download')) {
-        logger.info(`Handling slow download for "${book.title}", opening in browser.`);
-        shell.openExternal(directLink);
-        const finalDownloads = store.get('downloads', []);
-        const item = finalDownloads.find((d) => d.client_id === book.client_id);
-        if (item) {
-          item.state = 'browser-download';
-          store.set('downloads', finalDownloads);
-          win.webContents.send('downloads-updated', finalDownloads);
-        }
-        return;
-      }
-      logger.info(`Starting download for "${book.title}" from direct link.`);
-      const downloadStream = got.stream(directLink);
-      const fileWriterStream = fs.createWriteStream(filePath);
-      downloadItems[book.client_id] = downloadStream;
-      const currentDownloads = store.get('downloads', []);
-      const item = currentDownloads.find((d) => d.client_id === book.client_id);
-      if (item) {
-        item.state = 'downloading';
-        store.set('downloads', currentDownloads);
-        win.webContents.send('downloads-updated', currentDownloads);
-      }
-      downloadStream.on('downloadProgress', (progress) => {
-        const currentDownloads = store.get('downloads', []);
-        const item = currentDownloads.find((d) => d.client_id === book.client_id);
-        if (item) {
-          item.state = 'downloading';
-          item.progress = {
-            percent: progress.total ? progress.percent : 0,
-            transferred: progress.transferred,
-            total: book.filesize || progress.total || 0,
-          };
-          store.set('downloads', currentDownloads);
-          win.webContents.send('download-progress', {
-            clientId: book.client_id,
-            progress: item.progress,
-          });
-        }
-      });
-      pipeline(downloadStream, fileWriterStream, (error) => {
-        const finalDownloads = store.get('downloads', []);
-        const item = finalDownloads.find((d) => d.client_id === book.client_id);
-        if (item) {
-          if (error) {
-            item.state = 'failed';
-            logger.error(`Download failed for "${book.title}": ${error.message}`);
-          } else {
-            item.state = 'completed';
-            logger.info(`Download completed for "${book.title}"`);
-          }
-          store.set('downloads', finalDownloads);
-          win.webContents.send('downloads-updated', finalDownloads);
-        }
-        delete downloadItems[book.client_id];
-      });
-      return; // Only try the first valid link
-    } catch (error) {
-      logger.error(`Error with download link ${link} for book "${book.title}":`, error);
-      // Continue to the next link
-    }
-  }
-
-  // If all links fail
-  logger.error(`All download links failed for book: "${book.title}"`);
-  const finalDownloads = store.get('downloads', []);
-  const item = finalDownloads.find((d) => d.client_id === book.client_id);
-  if (item) {
-    item.state = 'failed';
-    store.set('downloads', finalDownloads);
-    win.webContents.send('downloads-updated', finalDownloads);
+    // 5. Notify renderer of completion
+    win.webContents.send('downloads-updated', [{
+      ...book,
+      filename: sanitizedFileName,
+      path: filePath,
+      state: 'completed',
+      progress: { percent: 1, transferred: total, total }
+    }]);
+    logger.info(`Download completed for "${book.title}"`);
+    return { success: true, filePath };
+  } catch (err) {
+    logger.error(`Download failed for "${book.title}": ${err}`);
+    win.webContents.send('downloads-updated', [{
+      ...book,
+      filename: sanitizedFileName,
+      path: filePath,
+      state: 'failed',
+      progress: { percent: 0, transferred: 0, total: 0 }
+    }]);
+    return { success: false, error: err.message || String(err) };
   }
 });
 
@@ -520,49 +401,6 @@ ipcMain.handle('get-version', () => {
   return version;
 });
 
-// IPC handler to get LibGen access info
-ipcMain.handle('get-libgen-access-info', async () => {
-  return await getLibgenAccessInfo();
-});
-
-// IPC handler to reset LibGen access method
-ipcMain.handle('reset-libgen-access-method', () => {
-  return resetLibgenAccessMethod();
-});
-
-ipcMain.handle('add-libgen-mirror', async (event, url) => {
-  return await addLibgenMirror(url);
-});
-
-ipcMain.handle('remove-libgen-mirror', async (event, url) => {
-  return await removeLibgenMirror(url);
-});
-
-// IPC handler to test LibGen access
-ipcMain.handle('test-libgen-access', async (event) => {
-  const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
-  return await testLibgenAccess(win, logger);
-});
-
-ipcMain.handle('open-logs-folder', () => {
-  shell.openPath(LOGS_DIR);
-});
-
-ipcMain.handle('get-latest-log', async () => {
-  const fs = require('fs');
-  const path = require('path');
-  const logPath = path.join(LOGS_DIR, 'log-latest.jsonl');
-  try {
-    if (fs.existsSync(logPath)) {
-      return fs.readFileSync(logPath, 'utf8');
-    } else {
-      return '';
-    }
-  } catch (e) {
-    return '';
-  }
-});
-
 // Patch logger to emit log lines to renderer
 const { info, warn, error, debug, verbose, log, LOGS_DIR, LEVELS } = logger;
 function emitLogToRenderers(entry) {
@@ -585,6 +423,15 @@ LEVELS.forEach(level => {
       emitLogToRenderers(entry);
     } catch {}
   };
+});
+
+ipcMain.handle('log', (event, { level, message, meta }) => {
+  if (typeof logger[level] === 'function') {
+    logger[level](message, meta);
+  } else {
+    logger.info(message, meta);
+  }
+  return true;
 });
 
 ipcMain.handle('check-for-updates', async () => {
@@ -655,6 +502,6 @@ ipcMain.handle('clear-app-data', async () => {
   }
 });
 
-ipcMain.handle('get-library-genesis-plus-fallback-status', async () => {
-  return !!global.libraryGenesisPlusFallback;
+ipcMain.handle('fetchLibgenFileCountByIsbn', async (event, isbn) => {
+  return await fetchLibgenFileCountByIsbn(isbn);
 });

@@ -10,8 +10,11 @@ export interface Book {
   size: string;
   extension: string;
   cover_url: string;
-  mirror_links: string[];
   description?: string;
+  /**
+   * ISBN(s) for the book. May be a single ISBN or multiple comma-separated ISBNs.
+   * The frontend will display only the first valid ISBN.
+   */
   isbn?: string;
   asin?: string;
   publishedDate?: string;
@@ -19,16 +22,12 @@ export interface Book {
   averageRating?: number;
   thumbnail?: string;
   doi?: string;
-  files?: Array<{
-    fileId: string;
-    extension: string;
-    filesize: number;
-    downloadLinks: Array<{ url: string; label: string }>;
-    mirror: string;
-    source: string;
-    locator: string;
-  }>;
   source?: string;
+  edition?: string;
+  series?: string;
+  translator?: string;
+  original_title?: string;
+  identifier?: string;
 }
 
 export interface Download extends Book {
@@ -67,14 +66,11 @@ export interface ElectronAPI {
   onDownloadProgress: (callback: (...args: any[]) => void) => void;
   getDownloadLocation: () => Promise<string | null>;
   getVersion: () => Promise<string>;
-  getLibgenAccessInfo: () => Promise<any>;
-  resetLibgenAccessMethod: () => Promise<any>;
-  addLibgenMirror: (url: string) => Promise<any>;
-  removeLibgenMirror: (url: string) => Promise<any>;
-  testLibgenAccess: () => Promise<any>;
   checkForUpdates: () => Promise<any>;
   clearAppData: () => Promise<any>;
   invoke?: (channel: string, ...args: any[]) => Promise<any>;
+  log: (level: string, message: string, meta?: any) => Promise<any>;
+  getNYTBestsellers: () => Promise<{ fiction: any[]; nonfiction: any[] }>;
 }
 
 declare global {

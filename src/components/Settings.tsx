@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { useTheme } from '../contexts/ThemeContext';
 import { useI18n } from '../contexts/I18nContext';
 import './Settings.css';
 import { FiGlobe, FiPlus, FiX, FiZap, FiInfo, FiGithub } from 'react-icons/fi';
@@ -10,87 +9,16 @@ interface SettingsProps {
 }
 
 const Settings: React.FC<SettingsProps> = ({ onClose }) => {
-  const {
-    theme,
-    setTheme,
-    lightAccent,
-    setLightAccent,
-    darkAccent,
-    setDarkAccent,
-    downloadButtonColor,
-    setDownloadButtonColor,
-    downloadLocation,
-    setDownloadLocation,
-    resetToDefaults,
-  } = useTheme();
   const { t, language, setLanguage, availableLanguages } = useI18n();
   const [version, setVersion] = useState('');
-  const [libgenAccessInfo, setLibgenAccessInfo] = useState<any>(null);
   const [resettingAccess, setResettingAccess] = useState(false);
-  const [newMirror, setNewMirror] = useState('');
   const [testingAccess, setTestingAccess] = useState(false);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateMessage, setUpdateMessage] = useState('');
   const [latestRelease, setLatestRelease] = useState('');
-  const [libraryGenesisPlusFallback, setLibraryGenesisPlusFallback] = useState(false);
-
-  // Theme customizer variables and helpers (moved inside component for access to t and theme)
-  const THEME_VARIABLES = [
-    { key: 'background', label: 'Background' },
-    { key: 'background-light', label: 'Background Light' },
-    { key: 'background-lighter', label: 'Background Lighter' },
-    { key: 'foreground', label: 'Foreground' },
-    { key: 'foreground-dark', label: 'Foreground Dark' },
-    { key: 'accent', label: 'Accent' },
-    { key: 'accent-hover', label: 'Accent Hover' },
-    { key: 'accent-glow', label: 'Accent Glow' },
-    { key: 'border', label: 'Border' },
-    { key: 'border-light', label: 'Border Light' },
-    { key: 'download-button-color', label: 'Download Button' },
-    { key: 'download-button-hover-color', label: 'Download Button Hover' },
-    { key: 'success', label: 'Success' },
-    { key: 'error', label: 'Error' },
-  ];
-
-  const THEME_MODES = [
-    { key: 'dark', label: t('settings.dark') },
-    { key: 'light', label: t('settings.light') },
-  ];
-
-  const getThemeVar = (mode: string, variable: string) => {
-    const root = document.documentElement;
-    if (mode === theme) {
-      return getComputedStyle(root).getPropertyValue(`--${variable}`)?.trim() || '';
-    } else {
-      const temp = document.createElement('div');
-      temp.style.display = 'none';
-      temp.setAttribute('data-theme', mode);
-      document.body.appendChild(temp);
-      const value = getComputedStyle(temp).getPropertyValue(`--${variable}`)?.trim() || '';
-      document.body.removeChild(temp);
-      return value;
-    }
-  };
-
-  const setThemeVar = (mode: string, variable: string, value: string) => {
-    const storageKey = `${mode}-${variable}`;
-    localStorage.setItem(storageKey, value);
-    if (mode === theme) {
-      document.documentElement.style.setProperty(`--${variable}`, value);
-    }
-  };
-
-  const resetThemeVars = (mode: string) => {
-    THEME_VARIABLES.forEach(({ key }) => {
-      const storageKey = `${mode}-${key}`;
-      localStorage.removeItem(storageKey);
-    });
-    window.location.reload();
-  };
 
   useEffect(() => {
     window.electron.getVersion().then(setVersion);
-    window.electron.getLibgenAccessInfo().then(setLibgenAccessInfo);
     // Fetch latest release from GitHub
     fetch('https://api.github.com/repos/JoshMiles/alexandria/releases/latest')
       .then(res => res.json())
@@ -98,50 +26,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
         if (data && data.tag_name) setLatestRelease(data.tag_name);
       })
       .catch(() => setLatestRelease('Unavailable'));
-    // Fetch Library Genesis+ fallback status
-    if (window.electron.invoke) {
-      window.electron.invoke('get-library-genesis-plus-fallback-status').then((active: boolean) => {
-        setLibraryGenesisPlusFallback(!!active);
-      });
-    }
   }, []);
-
-  const handleResetAccess = async () => {
-    setResettingAccess(true);
-    await window.electron.resetLibgenAccessMethod();
-    const info = await window.electron.getLibgenAccessInfo();
-    setLibgenAccessInfo(info);
-    setResettingAccess(false);
-  };
-
-  const handleAddMirror = async () => {
-    if (newMirror.trim()) {
-      const info = await window.electron.addLibgenMirror(newMirror.trim());
-      setLibgenAccessInfo(info);
-      setNewMirror('');
-    }
-  };
-
-  const handleRemoveMirror = async (url: string) => {
-    const info = await window.electron.removeLibgenMirror(url);
-    setLibgenAccessInfo(info);
-  };
-
-  const handleTestAccess = async () => {
-    setTestingAccess(true);
-    try {
-      const result = await window.electron.testLibgenAccess();
-      if (result.success) {
-        const info = await window.electron.getLibgenAccessInfo();
-        setLibgenAccessInfo(info);
-      }
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('Error testing LibGen access:', error);
-    } finally {
-      setTestingAccess(false);
-    }
-  };
 
   const handleCheckForUpdates = async () => {
     setCheckingUpdate(true);
@@ -169,46 +54,8 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
             <h1 className="settings-header-title">{t('settings.title')}</h1>
           </div>
           <div className="settings-grid">
-            {/* Theme & Accent */}
-            <div className="settings-panel settings-logger-panel">
-              <div className="panel-header">
-                <span className="panel-title">{t('settings.themeAndAccent')}</span>
-                <span className="panel-tooltip" title="Change the app's theme and accent colors."><FiInfo /></span>
-              </div>
-              <div className="theme-options">
-                {THEME_MODES.map(({ key, label }) => (
-                  <label key={key}>
-                    <input type="radio" name="theme" value={key} checked={theme === key} onChange={e => setTheme(e.target.value)} />
-                    <div className={`theme-preview ${key}-preview`}>{label}</div>
-                  </label>
-                ))}
-              </div>
-              <div className="theme-divider" />
-              <div className="theme-customizer-section">
-                {THEME_MODES.map(({ key: mode, label }) => (
-                  <div key={mode} className="theme-card">
-                    <div className="theme-card-header">{label} Theme</div>
-                    <div className="theme-card-grid">
-                      {THEME_VARIABLES.map(({ key: varKey, label: varLabel }) => (
-                        <div className="theme-color-group" key={varKey}>
-                          <label htmlFor={`${mode}-${varKey}-picker`} className="theme-color-label">{varLabel}</label>
-                          <input
-                            type="color"
-                            id={`${mode}-${varKey}-picker`}
-                            value={getThemeVar(mode, varKey) || '#000000'}
-                            onChange={e => setThemeVar(mode, varKey, e.target.value)}
-                            className="theme-color-input"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                    <button className="reset-button theme-reset-btn" onClick={() => resetThemeVars(mode)}>
-                      Reset {label} Theme to Defaults
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
+            {/* Only non-theme settings remain here */}
+            {/* Language, update, etc. */}
             {/* Language */}
             <div className="settings-panel settings-grid-item">
               <div className="panel-header">
@@ -224,19 +71,6 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                   <option key={code} value={code}>{lang.flag} {lang.name}</option>
                 ))}
               </select>
-            </div>
-            {/* Downloads */}
-            <div className="settings-panel settings-grid-item">
-              <div className="panel-header">
-                <span className="panel-title">{t('settings.downloads')}</span>
-                <span className="panel-tooltip" title="Set your default download location."><FiInfo /></span>
-              </div>
-              <div className="setting-row">
-                <label htmlFor="download-location">{t('settings.defaultDownloadLocation')}</label>
-                <button onClick={() => setDownloadLocation()}>
-                  {downloadLocation ? downloadLocation : t('settings.selectFolder')}
-                </button>
-              </div>
             </div>
             {/* Logger (full width) */}
             <div className="settings-panel settings-logger-panel">
@@ -257,10 +91,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                 <span className="panel-title">Advanced</span>
                 <span className="panel-tooltip" title="Advanced app actions."><FiInfo /></span>
               </div>
-              <button className="reset-button" onClick={resetToDefaults}>
-                {t('settings.resetToDefaults')}
-              </button>
-              <button className="reset-button" style={{ marginTop: '0.5rem', background: 'var(--error)' }} onClick={() => window.electron.clearAppData()}>
+              <button className="reset-button" onClick={() => window.electron.clearAppData()}>
                 Clear App Data (Store & Logs)
               </button>
             </div>

@@ -133,7 +133,7 @@ const Sidebar = forwardRef<Resizable, SidebarProps>(({
                   ) : (
                     !imageError ? (
                       <img
-                        src={download.thumbnail || `https://libgen.is/covers/fictioncovers/${download.id}.jpg`}
+                        src={download.thumbnail || `https://covers.openlibrary.org/b/id/${download.id}-L.jpg`}
                         alt={download.title}
                         className="download-card-cover"
                         onError={handleImageError}

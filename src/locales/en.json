@@ -14,7 +14,8 @@
     "error": "Error",
     "success": "Success",
     "info": "Info",
-    "found": "found"
+    "found": "found",
+    "loadMore": "Load More"
   },
   "settings": {
     "title": "Settings",

@@ -1,9 +1,4 @@
 // Note: electron-log types are imported dynamically to avoid module resolution issues
-type Logger = {
-  info: (message: string, ...args: any[]) => void;
-  error: (message: string, ...args: any[]) => void;
-  warn: (message: string, ...args: any[]) => void;
-};
 
 export interface AppError {
   message: string;
@@ -25,7 +20,7 @@ export const createError = (message: string, code?: string, originalError?: Erro
 /**
  * Logs error with consistent format
  */
-export const logError = (logger: Logger, context: string, error: Error | AppError | string, additionalInfo?: any): void => {
+export const logError = (logger: any, context: string, error: Error | AppError | string, additionalInfo?: any): void => {
   const errorMessage = typeof error === 'string' ? error : error.message;
   logger.error(`[${context}] ${errorMessage}`, { error, additionalInfo });
 };
@@ -33,7 +28,7 @@ export const logError = (logger: Logger, context: string, error: Error | AppErro
 /**
  * Handles HTTP request errors with retry logic
  */
-export const handleHttpError = (error: any, url: string, logger: Logger): AppError => {
+export const handleHttpError = (error: any, url: string, logger: any): AppError => {
   if (error.response) {
     // Server responded with error status
     const message = `HTTP ${error.response.status}: ${error.response.statusText} for ${url}`;
@@ -58,7 +53,7 @@ export const handleHttpError = (error: any, url: string, logger: Logger): AppErr
 export const safeAsync = async <T>(
   fn: () => Promise<T>,
   fallback: T,
-  logger: Logger,
+  logger: any,
   context: string
 ): Promise<T> => {
   try {

@@ -5,7 +5,7 @@ const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
 
 module.exports = [
   {
-    mode: 'production',
+    mode: 'development',
     entry: {
       main: './src/index.tsx',
       startup: './src/startup.tsx',
@@ -150,10 +150,19 @@ module.exports = [
         config: [__filename],
       },
     },
+    devServer: {
+      static: {
+        directory: path.join(__dirname, 'dist'),
+      },
+      port: 5173,
+      hot: true,
+      historyApiFallback: true,
+      open: false,
+    },
   },
   {
     mode: 'production',
-    entry: './backend/libgen-api.js',
+    entry: './backend/alexandria-lib.js',
     target: 'electron-main',
     output: {
       path: path.resolve(__dirname, 'dist'),

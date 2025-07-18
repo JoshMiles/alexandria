@@ -2,8 +2,10 @@
   display: flex;
   height: 40px;
   -webkit-app-region: drag;
-  background-color: var(--background-light);
-  border-bottom: 1px solid var(--border);
+  background: #f8f5f1 !important;
+  color: #23223a;
+  box-shadow: 0 2px 8px 0 #e9e6df;
+  border-bottom: 1.5px solid #e9e6df;
   position: relative;
   z-index: 100;
 }

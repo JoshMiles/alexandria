@@ -12,49 +12,15 @@ const parseProgress = (msg: string): number | null => {
   return null;
 };
 
-const parseLibGenProgress = (msg: string): number | null => {
-  // Parse LibGen mirror testing progress
-  const mirrorMatch = msg.match(/Testing mirror (\d+)\/(\d+):/);
-  if (mirrorMatch) {
-    const current = parseInt(mirrorMatch[1], 10);
-    const total = parseInt(mirrorMatch[2], 10);
-    if (!isNaN(current) && !isNaN(total) && total > 0) {
-      return Math.round((current / total) * 100);
-    }
-  }
-  return null;
-};
-
 const StartupContent = () => {
   const { t } = useI18n();
   const [message, setMessage] = useState(t('app.loading'));
   const [progress, setProgress] = useState<number | null>(null);
-  const [showFallbackWarning, setShowFallbackWarning] = useState(false);
 
   useEffect(() => {
     window.electron.on('update-message', (newMessage) => {
       setMessage(newMessage);
       setProgress(parseProgress(newMessage));
-      if (typeof newMessage === 'string' && newMessage.includes('libgen.bz fallback')) {
-        setShowFallbackWarning(true);
-      }
-    });
-
-    // Listen for LibGen access check messages
-    window.electron.on('search-status', (newMessage) => {
-      setMessage(newMessage);
-      const libgenProgress = parseLibGenProgress(newMessage);
-      if (libgenProgress !== null) {
-        setProgress(libgenProgress);
-      } else if (newMessage.includes('Testing main LibGen domain') || 
-                 newMessage.includes('Main domain unavailable') ||
-                 newMessage.includes('Found working mirror') ||
-                 newMessage.includes('All LibGen mirrors are currently unavailable')) {
-        setProgress(null); // Use indeterminate for these messages
-      }
-      if (typeof newMessage === 'string' && newMessage.includes('libgen.bz fallback')) {
-        setShowFallbackWarning(true);
-      }
     });
   }, []);
 
@@ -76,20 +42,6 @@ const StartupContent = () => {
             </div>
           )}
         </div>
-        {showFallbackWarning && (
-          <div style={{
-            background: '#ffeeba',
-            color: '#856404',
-            border: '1px solid #ffeeba',
-            padding: '0.75rem 1rem',
-            borderRadius: 6,
-            marginBottom: '1rem',
-            fontSize: '1.05rem',
-            textAlign: 'center',
-          }}>
-            <b>Warning:</b> All main LibGen mirrors are down. Searches will use the <b>libgen.bz fallback</b> (ads filtered, may differ from main LibGen).
-          </div>
-        )}
         <div className="startup-status">{message}</div>
       </div>
     </div>

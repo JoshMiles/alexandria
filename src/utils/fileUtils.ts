@@ -53,3 +53,20 @@ export const isDoi = (query: string): boolean => {
   const doiRegex = /10\.\d{4,9}\/[-._;()/:A-Z0-9]+$/i;
   return doiRegex.test(query);
 };
+
+/**
+ * Resolves the direct Libgen download link for a given md5 by fetching ads.php and parsing the get.php link.
+ * Returns the full direct download URL, or throws if not found.
+ */
+export async function resolveLibgenDownloadLink(md5: string, baseUrl: string = 'https://libgen.bz'): Promise<string> {
+  const adsUrl = `${baseUrl}/ads.php?md5=${md5}`;
+  const res = await fetch(adsUrl);
+  if (!res.ok) throw new Error(`Failed to fetch ads.php for md5: ${md5}`);
+  const html = await res.text();
+  // Find the get.php link (e.g. href="get.php?md5=...&key=...")
+  const match = html.match(/href=["'](get\.php\?md5=[^"'&]+&key=[^"'&]+)["']/i);
+  if (!match) throw new Error('Could not find get.php download link on ads.php page');
+  const getLink = match[1];
+  // Construct the full download URL
+  return `${baseUrl}/${getLink}`;
+}

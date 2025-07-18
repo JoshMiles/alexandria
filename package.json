@@ -5,15 +5,16 @@
   "main": "main.js",
   "scripts": {
     "start": "electron-forge start",
-    "build": "webpack",
+    "build": "node scripts/build.mjs",
     "build:conveyor": "conveyor make",
     "watch": "webpack --watch",
-    "clean": "rm -rf dist node_modules/.cache/webpack",
-    "test": "jest",
+    "clean": "node scripts/clean.mjs",
+    "test": "node scripts/test.mjs",
     "test:watch": "jest --watch",
     "analyze": "webpack --analyze",
-    "package": "electron-forge package",
-    "make": "electron-forge make"
+    "package": "node scripts/package.mjs",
+    "make": "node scripts/make.mjs",
+    "dev": "webpack serve --mode development --open"
   },
   "keywords": [],
   "author": {
@@ -26,6 +27,7 @@
     "@fontsource/inter": "^5.0.18",
     "@hydraulic/conveyor": "^18.1.0",
     "axios": "^1.10.0",
+    "axios-cookiejar-support": "^6.0.4",
     "cheerio": "^1.1.0",
     "clsx": "^2.1.1",
     "electron-dl": "^4.0.0",
@@ -42,7 +44,9 @@
     "react-icons": "^5.5.0",
     "react-lazy-load-image-component": "^1.6.3",
     "react-spring": "^10.0.1",
+    "react-window": "^1.8.11",
     "socks-proxy-agent": "^8.0.5",
+    "tough-cookie": "^5.1.2",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
@@ -65,10 +69,12 @@
     "@types/jest": "^30.0.0",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
+    "@types/react-window": "^1.8.8",
     "@types/uuid": "^10.0.0",
     "babel-jest": "^30.0.2",
     "babel-loader": "^10.0.0",
     "babel-plugin-transform-remove-console": "^6.9.4",
+    "chalk": "^5.4.1",
     "core-js": "^3.36.0",
     "css-loader": "^7.1.2",
     "css-minimizer-webpack-plugin": "^6.0.0",
@@ -77,13 +83,16 @@
     "identity-obj-proxy": "^3.0.0",
     "jest": "^30.0.3",
     "jest-environment-jsdom": "^30.0.2",
+    "ora": "^8.2.0",
+    "rimraf": "^6.0.1",
     "style-loader": "^4.0.0",
     "terser-webpack-plugin": "^5.3.10",
     "ts-jest": "^29.4.0",
     "typescript": "^5.4.5",
     "webpack": "^5.99.9",
     "webpack-bundle-analyzer": "^4.10.1",
-    "webpack-cli": "^6.0.1"
+    "webpack-cli": "^6.0.1",
+    "webpack-dev-server": "^5.2.2"
   },
   "build": {
     "publish": [

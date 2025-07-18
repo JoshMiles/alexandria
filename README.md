@@ -23,9 +23,9 @@ _Alexandria_ is a modern UI for searching Library Genesis (LibGen) and DOIs (Sci
 
 | Platform         | Installer/ZIP Link |
 |------------------|-------------------|
-| Windows          | [Download Setup EXE](https://github.com/JoshMiles/alexandria/releases/download/v0.1.64/alexandria-0.1.64.Setup.exe) |
-| macOS (Intel)    | [Download ZIP](https://github.com/JoshMiles/alexandria/releases/download/v0.1.64/alexandria-darwin-x64-0.1.64.zip) |
-| macOS (Apple)    | [Download ZIP](https://github.com/JoshMiles/alexandria/releases/download/v0.1.64/alexandria-darwin-arm64-0.1.64.zip) |
-| Linux (DEB)      | [Download DEB](https://github.com/JoshMiles/alexandria/releases/download/v0.1.64/alexandria_0.1.64_amd64.deb) |
-| Linux (RPM)      | [Download RPM](https://github.com/JoshMiles/alexandria/releases/download/v0.1.64/alexandria-0.1.64-1.x86_64.rpm) |
+| Windows          | [Download Setup EXE](https://github.com/JoshMiles/alexandria/releases/download/v0.1.69/alexandria-0.1.69.Setup.exe) |
+| macOS (Intel)    | [Download ZIP]() |
+| macOS (Apple)    | [Download ZIP](https://github.com/JoshMiles/alexandria/releases/download/v0.1.69/alexandria-darwin-arm64-0.1.69.zip) |
+| Linux (DEB)      | [Download DEB](https://github.com/JoshMiles/alexandria/releases/download/v0.1.69/alexandria_0.1.69_amd64.deb) |
+| Linux (RPM)      | [Download RPM](https://github.com/JoshMiles/alexandria/releases/download/v0.1.69/alexandria-0.1.69-1.x86_64.rpm) |
 

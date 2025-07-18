@@ -29,6 +29,6 @@ function run(cmd, args, label) {
 
 runNodeScript('clean.mjs', 'Cleaning project');
 runNodeScript('build.mjs', 'Building project');
-run('npm', ['run', 'make'], 'Creating distributable packages');
+run('npx', ['electron-forge', 'make'], 'Creating distributable packages');
 
 console.log('Make script complete.'); 

@@ -6,19 +6,27 @@ import ora from 'ora';
 const bump = process.argv[2] || 'patch';
 
 function run(cmd, args, label) {
-  const spinner = ora(label).start();
-  const result = spawnSync(cmd, args, { stdio: 'inherit', shell: process.platform === 'win32' });
+  console.log(chalk.yellow(`[DEBUG] Running: ${cmd} ${args.map(a => JSON.stringify(a)).join(' ')}`));
+  const useShell = process.platform === 'win32';
+  let result;
+  if (useShell) {
+    // Join command and args into a single string for Windows shell
+    const fullCmd = [cmd, ...args].map(a => (a.includes(' ') ? `"${a}"` : a)).join(' ');
+    result = spawnSync(fullCmd, { stdio: 'inherit', shell: true });
+  } else {
+    result = spawnSync(cmd, args, { stdio: 'inherit', shell: false });
+  }
   if (result.status !== 0) {
-    spinner.fail(chalk.red(`Failed: ${cmd} ${args.join(' ')}`));
+    console.error(result.error);
     process.exit(result.status);
   }
-  spinner.succeed(chalk.green(`Success: ${cmd} ${args.join(' ')}`));
 }
 
 console.log(chalk.bold.blue('Starting release process...'));
 
 run('git', ['add', '.'], 'Staging all changes');
-run('npm', ['version', bump, '-m', 'chore(release): %s'], `Bumping version with '${bump}'`);
+run('git', ['commit', '-m', `chore: prepare for release`], 'Committing staged changes');
+run('npm', ['version', bump], `Bumping version with '${bump}'`);
 run('git', ['push'], 'Pushing commit');
 run('git', ['push', '--tags'], 'Pushing tags');
 

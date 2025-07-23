@@ -26,7 +26,7 @@
     "@codaworks/react-glow": "^1.0.6",
     "@fontsource/inter": "^5.0.18",
     "@hydraulic/conveyor": "^18.1.0",
-    "axios": "^1.10.0",
+    "axios": "^1.11.0",
     "axios-cookiejar-support": "^6.0.4",
     "cheerio": "^1.1.0",
     "clsx": "^2.1.1",
